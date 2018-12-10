@@ -36,7 +36,26 @@ ANNOTATIONS=ROOT+"/common/task/annotations/dataset/gdc"
 
 CALLABLE="5:10,10:50,50:100,100:150,150:inf"
 PADDING=100
+MINDP=10
 
 GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
 
 VEP_CACHE_DIR=ROOT+"/common/task/annotations/dataset/VEP"
+
+
+rule add_chr_to_vcf_porc:
+    input: DATA_DIR+"/All_20180418.vcf.gz"
+    output: "dbsnp.all.vcf.gz"
+    shell:
+        """
+        zcat {input} | perl -ane 'if (/^#/) {{print "$_"}} else {{print "chr$_"}}' | bgzip > {output}
+        tabix -p vcf {output}
+        """
+
+rule sort_targeted_porc:
+    input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
+    output: SEXONS
+    shell:
+        """
+            bedtools sort -faidx {input.fai} -i {input.bed} > {output}
+        """
