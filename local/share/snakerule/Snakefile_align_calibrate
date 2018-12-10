@@ -1,0 +1,271 @@
+include: "../conf.sk"
+
+def produce_pairs(wildcards):
+        import os
+        fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+        if len(fastqs) == 2 and os.path.isfile(fastqs[1]):
+                return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
+        else:
+                return { 'fastq1': fastqs[0], 'fastq2': ''}
+
+# But GATK:
+# "PreProcessingForVariantDiscovery_GATK4.bwa_commandline": "bwa mem -K 100000000 -p -v 3 -t 16 -Y $bash_ref_fasta",
+# -K and -Y are not in the manual, -k is minimum seed length (?) TOUNDERSTANDXXX
+# If the quality scores are encoded as Illumina 1.3 or 1.5, use BWA aln with the “-l” flag.
+#-T INT Don't output alignment with scores lower than INT. This option only affects output. [30]
+# defining RG from help from https://www.biostars.org/p/280837/, but changed SM to be more human readable, lib is somewhat 
+# conceptually wrong here, I fear.
+
+# TODO RERUn with:
+#      -K INT        process INT input bases in each batch regardless of nThreads (for reproducibility) []
+#      -Y            use soft clipping for supplementary alignments
+# -p            smart pairing (ignoring in2.fq)  nonono!
+
+# -v 3 is the default so it's not needed
+# Why -T 0? Where did I get it? https://docs.gdc.cancer.gov/Data/PDF/Data_UG.pdf
+# but these are not best practices from GATK, they use the default -T 30, will it work anyway?
+# In that doc they merge with picard, but merge all samples together?
+rule bwa_mem:
+    input: unpack(produce_pairs)
+    output: "{sample}.bam"
+    params: cores=CORES, ref=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    shell: 
+        """
+        header=$(zcat {input.fastq1} | head -n 1) || echo "pipehead"
+        id=$(echo $header | cut -f 1-4 -d":" | sed 's/^@//' | sed 's/:/_/g')
+        smnh=$(echo $header | grep -Eo "[ATGCN]+$")
+        sm={wildcards.sample}
+        bwa mem -R "@RG\\tID:$id\\tSM:$sm\\tLB:$sm"_"$id"_"$smnh\\tPL:ILLUMINA" -t {params.cores} -K 100000000 -Y {params.ref} {input.fastq1} {input.fastq2} | samtools view -Shb -o {output} 
+        """
+
+#Nodes: 1
+#Cores per node: 8
+#CPU Utilized: 05:33:31
+#CPU Efficiency: 52.75% of 10:32:16 core-walltime
+#Job Wall-clock time: 01:19:02
+#Memory Utilized: 5.56 GB
+#Memory Efficiency: 71.20% of 7.81 GB
+
+# New options -K -Y (?) and a single core, you idiot!
+#Job ID: 32017
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Cores: 1
+#CPU Utilized: 05:34:19
+#CPU Efficiency: 99.77% of 05:35:06 core-walltime
+#Job Wall-clock time: 05:35:06
+#Memory Utilized: 6.24 GB
+#Memory Efficiency: 63.85% of 9.77 GB
+
+
+# We skip this rule cause:
+# Task is assuming query-sorted input so that the Secondary and Supplementary reads get marked correctly
+# This works because the output of BWA is query-grouped and therefore, so is the output of MergeBamAlignment.
+# While query-grouped isn't actually query-sorted, it's good enough for MarkDuplicates with ASSUME_SORT_ORDER="queryname"
+# Picard sort and mark duplicates # XXX TODO sort with samtools after mapping and get done with it?
+rule sort_picard:
+    input: "{sample}.bam"
+    output: temp("sorted_{sample}.bam")
+    shell:
+        """
+        picard SortSam INPUT={input} OUTPUT={output} SORT_ORDER="queryname"
+        """
+
+#http://dkoboldt.github.io/varscan/germline-calling.html
+
+# which are the parameters suggested by best practices? -1 for MINIMUM_DISTANCE does not seem right
+#https://broadinstitute.github.io/picard/command-line-overview.html
+#https://github.com/gatk-workflows/gatk4-data-processing/blob/master/processing-for-variant-discovery-gatk4.wdl
+#https://github.com/gatk-workflows/five-dollar-genome-analysis-pipeline/blob/master/tasks_pipelines/unmapped_bam_to_aligned_bam.wdl
+#https://github.com/gatk-workflows/five-dollar-genome-analysis-pipeline/blob/master/tasks_pipelines/bam_processing.wdl
+#    METRICS_FILE=${metrics_filename} \
+#      VALIDATION_STRINGENCY=SILENT \ for efficiency reasons, but I would like it to validate instead of having to check that I'm guessing the parameters right. removed assume_sorted for the same reason
+#      ${"READ_NAME_REGEX=" + read_name_regex} \ not needed cause the default should split on : and be ok
+#      OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500 \
+#      ASSUME_SORT_ORDER="queryname" \
+#      CLEAR_DT="false" \ ????
+#ADD_PG_TAG_TO_READS=false
+# TODO not withMateCigar? Which is in the bestpractices (differences from pdf from  https://www.broadinstitute.org/partnerships/education/broade/best-practices-variant-calling-gatk-1 and https://software.broadinstitute.org/gatk/best-practices/workflow?id=11165)
+#https://gatkforums.broadinstitute.org/gatk/discussion/6747/how-to-mark-duplicates-with-markduplicates-or-markduplicateswithmatecigar#section2
+rule mark_duplicates_picard:
+    input: "{sample}.bam"
+    output: bam="markedDup_{sample}.bam", metrics="{sample}.dupMetrics.txt"
+    params: pixel_dist=PATTERNED
+    shell: 
+        """
+        picard -Xmx10g -XX:ParallelGCThreads=11 MarkDuplicates INPUT="{input}" OUTPUT="{output.bam}" METRICS_FILE="{output.metrics}" \
+        ASSUME_SORT_ORDER="queryname" OPTICAL_DUPLICATE_PIXEL_DISTANCE="{params.pixel_dist}" \
+        ADD_PG_TAG_TO_READS=false VALIDATION_STRINGENCY="STRICT"
+        """
+
+# Run time 00:31:45
+#[align_calibrate]egrassi@hactarlogin$ seff 30212
+#Job ID: 30212
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Nodes: 1
+#Cores per node: 12
+#CPU Utilized: 01:01:01
+#CPU Efficiency: 16.01% of 06:21:00 core-walltime
+#Job Wall-clock time: 00:31:45
+#Memory Utilized: 8.79 GB
+#Memory Efficiency: 90.03% of 9.77 GB
+
+
+# TODO cluster json that gets from rule params the max mem to be used, need a generalized snakemake_cluster that do not require mem
+
+# indel realignment: apparently not useful anymore for gatk 4 - need to call it before using other caller?
+# [gatk]egrassi@hactarlogin$ singularity pull --name gatk.img docker://broadinstitute/gatk:4.0.11.0
+rule add_chr_to_vcf_porc:
+    input: DATA_DIR+"/All_20180418.vcf.gz"
+    output: "dbsnp.all.vcf.gz"
+    shell:
+        """
+        zcat {input} | perl -ane 'if (/^#/) {{print "$_"}} else {{print "chr$_"}}' | bgzip > {output}
+        tabix -p vcf {output}
+        """
+
+
+rule sort_targeted_porc:
+    input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
+    output: SEXONS
+    shell:
+        """
+            bedtools sort -faidx {input.fai} -i {input.bed} > {output}
+        """
+
+#[data]egrassi@compute-1-4$ samtools faidx GRCh38.d1.vd1.fa
+#[data]egrassi@compute-1-4$ picard CreateSequenceDictionary R=GRCh38.d1.vd1.fa O=GRCh38.d1.vd1.dict
+#[align_calibrate]egrassi@compute-1-4$ time snakemake realigned_CRC0542LMX0B03020TUMD05000.bam --use-singularity --singularity-args "-B /home/egrassi/strata/:/home/egrassi/strata/"
+# --spark-master local[2] to use BaseRecalibratorSpark with 2 threads but it's still beta
+rule recalibrate_quality:
+    input: bam="markedDup_{sample}.sorted.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", snps="dbsnp.all.vcf.gz", bed=SEXONS, bai="markedDup_{sample}.sorted.bam.bai"
+    singularity: ROOT+"/gatk/gatk.img"
+    output: bam="realigned_{sample}.bam", table="{sample}.table"
+    params: padding=PADDING
+    shell:
+        """
+            gatk BaseRecalibrator --interval-padding {params.padding} -R {input.reference} -I {input.bam} --known-sites {input.snps} -O {output.table} -L {input.bed} 2> {output.table}.slog
+            gatk ApplyBQSR -R {input.reference} -I {input.bam} --bqsr-recal-file  {output.table} -O {output.bam} --create-output-bam-index true 2> {output.bam}.slog
+        """
+
+#ruleorder: recalibrate_quality > mark_duplicates_picard > bwa_mem
+
+#[align_calibrate]egrassi@compute-1-4$ time  snakemake --use-singularity --singularity-args "-B /home/egrassi/strata:/home/egrassi/strata" realigned_CRC0542LMX0B03020TUMD05000.bam 
+# started but was too slow to be left on srun over night :(
+#hoping for the best
+#[align_calibrate]egrassi@hactarlogin$ snakemake -j 1 CRC0542LMX0B03020TUMD05000.placeholder --cluster-config ../../local/src/hactar.json --cluster "sbatch --mail-user={cluster.mail-user} --mail-type={cluster.mail-type} --partition={cluster.partition} --nodes={cluster.nodes} --job-name={cluster.job-name} --output={cluster.output} --error={cluster.error} --time=48:00:00 --mem=8000 --ntasks=4 --use-singularity --singularity-args "-B /home/egrassi/strata:/home/egrassi/strata"
+
+# load singularity before
+#[align_calibrate]egrassi@hactarlogin$ snakemake -j 1 CRC0542LMX0B03020TUMD05000.placeholder --cluster-config ../../../local/share/hactar.json --cluster "sbatch --mail-user={cluster.mail-user} --mail-type={cluster.mail-type} --partition={cluster.partition} --nodes={cluster.nodes} --job-name={cluster.job-name} --output={cluster.output} --error={cluster.error} --time=48:00:00 --mem=8000 --ntasks=4" --use-singularity --singularity-args "-B /home/egrassi/strata:/home/egrassi/strata"
+
+rule recalibrate_plot:
+    input: reference=DATA_DIR+"/GRCh38.d1.vd1.fa", table="{sample}.table", bam="realigned_{sample}.bam", snps="dbsnp.all.vcf.gz", bed=SEXONS
+    output: "{sample}.recal_plots.pdf"
+    singularity: ROOT+"/gatk/gatk.img"
+    params: padding=PADDING
+    shell: 
+        """
+        gatk BaseRecalibrator --interval-padding {params.padding} -R {input.reference} -I {input.bam} --known-sites {input.snps} -O {output}.table -L {input.bed}
+        gatk AnalyzeCovariates -before {input.table} -after {output}.table -plots {output}
+        """
+
+
+## Recalibration, step 1:
+#[align_calibrate]egrassi@hactarlogin$ seff 30510
+#Job ID: 30510
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Cores: 1
+#CPU Utilized: 01:10:37
+#CPU Efficiency: 98.06% of 01:12:01 core-walltime
+#Job Wall-clock time: 01:12:01
+#Memory Utilized: 1.02 GB
+#Memory Efficiency: 52.05% of 1.95 GB
+## Step 2:
+#[align_calibrate]egrassi@hactarlogin$ seff 30514
+#Job ID: 30514
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Cores: 1
+#CPU Utilized: 00:51:14
+#CPU Efficiency: 99.81% of 00:51:20 core-walltime
+#Job Wall-clock time: 00:51:20
+#Memory Utilized: 1.03 GB
+#Memory Efficiency: 52.78% of 1.95 GB
+
+# On using mutect2 or the germline caller if one does not have normal samples:
+#https://www.biostars.org/p/283279/
+#according to https://www.biostars.org/p/207536/
+# https://github.com/AstraZeneca-NGS/VarDict
+rule sorted_bai:
+    input: "{whatever}.bam"
+    output: bai="{whatever}.sorted.bam.bai", bam="{whatever}.sorted.bam"
+    params: threads="8"
+    shell: 
+        """
+        samtools sort --threads {params.threads} -o {output.bam} {input}
+        samtools index {output.bam} {output.bai}
+        """
+
+
+#[align_calibrate]egrassi@hactarlogin$ seff 30453
+#Job ID: 30453
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Nodes: 1
+#Cores per node: 8
+#CPU Utilized: 00:16:19
+#CPU Efficiency: 11.72% of 02:19:12 core-walltime
+#Job Wall-clock time: 00:17:24
+#Memory Utilized: 840.66 MB
+#Memory Efficiency: 10.51% of 7.81 GB
+#---> add -@ !
+
+# --fast-mode is not available in conda's version
+rule all_coverage:
+    input: bam="realigned_{sample}.sorted.bam", bai="realigned_{sample}.sorted.bam.bai"
+    output: "depth/{sample}.quantized.bed.gz"
+    params: prefix="depth/{sample}", thread=12
+    shell: 
+        """
+            mkdir -p depth
+            mosdepth -t {params.thread} -n --quantize 0:1:5:10:50:100:150: {params.prefix} {input.bam}
+        """
+
+rule split_coverage:
+    input: exons=SEXONS, depth="depth/{sample}.quantized.bed.gz"
+    output: exons="depth/{sample}.exons.bed.gz", outof="depth/{sample}.outof.bed.gz"
+    shell:
+        """
+            bedtools intersect -u -a {input.depth} -b {input.exons} | gzip > {output.exons}
+            bedtools subtract -sorted -a {input.depth} -b {input.exons} | gzip > {output.outof}
+        """
+
+rule coverage_plot:
+    input: bed="depth/{sample}.{kind}.bed.gz"
+    output: pdf="depth/{sample}.{kind}.pdf"
+    params: debug=DEBUG
+    script: SRC_DIR+"/coverage_plot.R"
+
+# This was a srun, estimated runtime top 30'
+#[align_calibrate]egrassi@hactarlogin$ seff 30595
+#Job ID: 30595
+#Cluster: hactar
+#User/Group: egrassi/egrassi
+#State: COMPLETED (exit code 0)
+#Cores: 1
+#CPU Utilized: 00:10:46
+#CPU Efficiency: 34.99% of 00:30:46 core-walltime
+#Job Wall-clock time: 00:30:46
+#Memory Utilized: 4.62 GB
+#Memory Efficiency: 31.55% of 14.65 GB
+
+
+### can be safely removed in the end;
+# *sorted.bam *sorted.bam.bai
