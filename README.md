@@ -7,5 +7,14 @@ and
 https://software.broadinstitute.org/gatk/best-practices/workflow?id=11146
 
 # Conda envs for non singularity rules
+Two conda envs: "root", for bwa and samtools, etc and "plot" for R rules.
+
+**TODO** add use-conda in Snakefiles, right now `source activate plot` is needed only before calling the coverage_plot
+rule in align_recalibrate and root is ok for everything else (note that it has more packages than those needed for this project, **TODO** list).
 
 # Singularity from GATK docker
+
+To produce the GATK singularity image the recipe is in local/src, then:
+`singularity build gatk.img gatk.recipe`
+
+Right now Snakefiles load the image from `ROOT+"/gatk/gatk.img"`.
