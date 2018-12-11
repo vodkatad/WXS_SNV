@@ -1,0 +1,18 @@
+include: "conf.sk"
+
+rule add_chr_to_vcf_porc:
+    input: DATA_DIR+"/All_20180418.vcf.gz"
+    output: "dbsnp.all.vcf.gz"
+    shell:
+        """
+        zcat {input} | perl -ane 'if (/^#/) {{print "$_"}} else {{print "chr$_"}}' | bgzip > {output}
+        tabix -p vcf {output}
+        """
+
+rule sort_targeted_porc:
+    input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
+    output: SEXONS
+    shell:
+        """
+            bedtools sort -faidx {input.fai} -i {input.bed} > {output}
+        """
