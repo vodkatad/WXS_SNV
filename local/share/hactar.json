@@ -75,7 +75,7 @@
     "filtercalls":
     {
         "time": "00:30:00",
-        "mem": "800",
+        "mem": "1000",
         "ntasks": "1"
     },
     "artifacts":
