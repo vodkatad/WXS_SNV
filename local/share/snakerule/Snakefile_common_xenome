@@ -1,0 +1,47 @@
+include: "conf.sk"
+
+def produce_pairs(wildcards):
+        import os
+        fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+        if len(fastqs) == 2 and os.path.isfile(fastqs[1]):
+                return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
+        else:
+                print "Error! I expect paired reads"
+
+#xenome classify -T 8 -P idx --pairs \ --graft-name human --host-name mouse \ --output-filename-prefix XYZ -i XYZ_1.fastq -i XYZ_2.fastq
+#8 AMD Opteron cores running at 2 GHz and with 32 GB of RAM Xenome processes ∼ 15 000 read pairs per sec
+##[~]egrassi@hactarlogin$ zcat /work/egrassi/WXS/local/share/data/bardelli_wes/CRC0106LMX0B01201TUMD08000.xenome_graft_1.fastq.gz | wc -l
+#260820876
+#65205219
+#4347
+#73'
+
+rule xenome:
+    input: unpack(produce_pairs)
+    output: log="{sample}.xenome", fastq1="{sample}.xenome_human_1.fastq.gz", fastq2="{sample}.xenome_human_2.fastq.gz"
+    params: cores=CORES, mem=MEM
+    singularity: ROOT+"/gossamer/gossamer.img"
+    shell: 
+        """
+            xenome classify -T {params.cores} -M {paramr.mem} -P {params.xenome} --graft-name human --host-name mouse \\
+            --pairs --output-filename-prefix {wildcards.sample} -i {input.fastq1} -i {input.fastq2} > {output.log}
+        """
+
+# todo rule to touch fastq files with the right age
+
+rule add_chr_to_vcf_porc:
+    input: DATA_DIR+"/All_20180418.vcf.gz"
+    output: "dbsnp.all.vcf.gz"
+    shell:
+        """
+        zcat {input} | perl -ane 'if (/^#/) {{print "$_"}} else {{print "chr$_"}}' | bgzip > {output}
+        tabix -p vcf {output}
+        """
+
+rule sort_targeted_porc:
+    input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
+    output: SEXONS
+    shell:
+        """
+            bedtools sort -faidx {input.fai} -i {input.bed} > {output}
+        """

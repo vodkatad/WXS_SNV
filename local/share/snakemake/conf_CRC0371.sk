@@ -1,0 +1,9 @@
+include: "../conf.sk"
+
+#[data]egrassi@hactarlogin$ ls *1.fastq.gz | perl -ane '/(CRC[0-9A-Z]+)/; print "\"$1\","';
+SAMPLES=["CRC0371LMX0B01201TUMD07000","CRC0371LMX0B02003TUMD02000","CRC0371LMX0B02004TUMD02000","CRC0371LMX0B03002TUMD07000","CRC0371LMX0B03030TUMD02000","CRC0371LMX0B04034TUMD02000"]
+
+rule all_something:
+    input: expand("{sample}.{{something}}", sample=SAMPLES)
+    output: "all_samples_{something}"
+    shell: "touch {output}"

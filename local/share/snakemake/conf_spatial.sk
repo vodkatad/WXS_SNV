@@ -1,0 +1,43 @@
+ROOT='/home/egrassi'
+PRJ_ROOT='/work/egrassi/WXS'
+SRC_DIR=PRJ_ROOT+'/local/src'
+DATA_DIR=PRJ_ROOT+'/local/share/data'
+DEBUG="yes"
+
+## This dataset:
+DATA=DATA_DIR+'/spatial'
+XENOME_FQ_DIR=PRJ_ROOT+'/dataset/spatial'
+EXONS=DATA+'/PJ1807203_covered.bed'
+SEXONS='../../PJ1807203_sorted.bed'
+#[data]egrassi@hactarlogin$ ls *1.fastq.gz | perl -ane '/(CRC[0-9A-Z]+)/; print "\"$1\"",';
+#SAMPLES=["CRC0542LMX0B01001TUMD11000","CRC0542LMX0B02001TUMD02000","CRC0542LMX0B02003TUMD02000","CRC0542LMX0B03020TUMD05000","CRC0542LMX0B04006TUMD02000"]
+SAMPLES=["CRC0106LMX0B01201TUMD08000"]
+FASTQ_SUFFIX=".xenome_graft_{pair}.fastq.gz"
+FASTQ_SUFFIX_NORMAL=".boh_{pair}.fastq.gz"
+
+PAIRS=[1,2]
+CORES=8
+MEM=4
+# TODO need to adapt to unpaired (do they exists?) reads, will need to change the all rule in the subdirs using an input function...
+PATTERNED=2500 
+# HiSeq4000, otherwise 100 for unpatterned
+#–o recal.bam
+
+wildcard_constraints:
+    sample="[a-zA-Z0-9]+"
+
+# Used references
+#https://gdc.cancer.gov/about-data/data-harmonization-and-generation/gdc-reference-files based on
+#ftp://ftp.ncbi.nlm.nih.gov/genomes/archive/old_genbank/Eukaryotes/vertebrates_mammals/Homo_sapiens/GRCh38/seqs_for_alignment_pipelines/README_ANALYSIS_SETS
+# DBSNP 151 ftp://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/All_20180418.vcf.gz
+ANNOTATIONS=ROOT+"/common/task/annotations/dataset/gdc"
+
+CALLABLE="5:10,10:50,50:100,100:150,150:inf"
+CALLABLE_STRICT="50:100,100:150,150:inf"
+
+PADDING=100
+MINDP=10
+
+GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
+
+VEP_CACHE_DIR=ROOT+"/common/task/annotations/dataset/VEP"
