@@ -1,0 +1,4 @@
+include: "../conf.sk"
+
+SSM_VCF_DIR="../mutect2"
+CNV_BOH_DIR=""
