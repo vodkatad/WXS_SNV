@@ -5,7 +5,8 @@ DATA_DIR=PRJ_ROOT+'/local/share/data'
 DEBUG="yes"
 
 ## This dataset:
-DATA=DATA_DIR+'/spatial'
+#DATA=DATA_DIR+'/spatial'
+DATA=PRJ_ROOT+"/local/share/data/bardelli_wes"
 XENOME_FQ_DIR=PRJ_ROOT+'/dataset/spatial'
 EXONS=DATA+'/PJ1807203_covered.bed'
 SEXONS='../../PJ1807203_sorted.bed'
