@@ -2,7 +2,7 @@ include: "../conf.sk"
 
 def produce_pairs(wildcards):
         import os
-        fastqs = expand(XENOME_FQ+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+        fastqs = expand(DATA_DIR+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
         if len(fastqs) == 2:
             if os.path.isfile(fastqs[1]):
                 #tumor pair
@@ -12,10 +12,12 @@ def produce_pairs(wildcards):
                 #normal pair
                 if os.path.isfile(fastqs[1]):
                     return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
-            else:
-                print "Error no normal or tumor fastq found!"
+                else:
+                    print("Error no normal or tumor fastq found!")
+                    return {}
         else:
-            print "I want paired samples!"
+            print("I want paired samples!")
+            return {}
 
 # But GATK:
 # "PreProcessingForVariantDiscovery_GATK4.bwa_commandline": "bwa mem -K 100000000 -p -v 3 -t 16 -Y $bash_ref_fasta",

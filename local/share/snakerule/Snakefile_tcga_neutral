@@ -1,0 +1,42 @@
+ROOT='/home/egrassi'
+PRJ_ROOT='/work/egrassi/WXS'
+SRC_DIR=PRJ_ROOT+'/local/src'
+DATA_DIR=PRJ_ROOT+'/local/share/data'
+DEBUG="yes"
+
+## This dataset:
+#[data]egrassi@hactarlogin$ ls *1.fastq.gz | perl -ane '/(CRC[0-9A-Z]+)/; print "\"$1\","';
+SAMPLES=["4e8c723f-6047-4b40-a246-a19b40abe9c1","5a515c9c-c20a-4853-a798-b0d74e204d99","8946661f-e9b1-42a0-b855-4709e94c51db", "647ec045-3d70-4cf4-b372-d8810582fd4c"]
+
+## This dataset:
+
+rule all_something:
+    input: expand("{sample}.{{something}}", sample=SAMPLES)
+    output: "all_samples_{something}"
+    shell: "touch {output}"
+
+rule passFilter:
+    input: "{sample}.vcf.gz"
+    output: "{sample}.pass.vcf.gz"
+    shell:
+        """
+        zcat {input} |  awk '/^#/ || $7=="PASS"' | grep -v 'POP_AF=1.00;' | bgzip > {output}
+        tabix {output}
+        """ 
+
+
+rule single_table:
+    input: vcf="{sample}.pass.vcf.gz"
+    output: "{sample}.pass.table.gz"
+    params: nsamples=1
+    shell:
+        """
+      zcat {input} | grep -v "^##" |  perl -ane '@gt=splice(@F,10,{params.nsamples}); $gt=""; foreach $g (@gt) {{ if ($.==1) {{$gt.=$g."\\t";}} else {{ @afs = split(":",$g); if ($afs[2] eq ".") {{$afs[2]=0;}} $gt.=$afs[2]."\\t";}} }} chop($gt) ; print $F[2]."\\t".$gt."\\n";' | grep -v "," | gzip > {output}
+        """
+
+rule neutral_sottoriva:
+    input: afmatrix="{sample}.pass.table.gz"
+    params: debug=DEBUG, afcolumn="TUMOR"
+    output: hist="{sample}.hist.{loweraf}_{higheraf}.pdf", fit="{sample}.fit.{loweraf}_{higheraf}.pdf", r2="{sample}.fit.{loweraf}_{higheraf}.r2"
+    script: SRC_DIR+"/neutral_sottoriva.R"
+
