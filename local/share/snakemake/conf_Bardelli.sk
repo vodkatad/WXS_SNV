@@ -39,4 +39,4 @@ MINDP=10
 
 GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
 
-VEP_CACHE_DIR=ROOT+"/common/task/annotations/dataset/VEP"
+VEP_CACHE_DIR=ROOT+"/common/task/variant_annotations/dataset/VEP"

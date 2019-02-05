@@ -60,6 +60,12 @@
         "mem": "3500",
         "ntasks": "1"
     },
+    "mutectpaired":
+    {
+        "time": "08:00:00",
+        "mem": "2500",
+        "ntasks": "1"
+    },
     "getpileup":
     {
         "time": "01:30:00",
@@ -101,5 +107,17 @@
         "time": "04:00:00",
         "mem": "18000",
         "ntasks": "8"
+    },
+    "repeated_muts":
+    {
+        "time": "4:00:00",
+        "mem": "1000",
+        "ntasks": "1"
+    },
+    "repeated_muts_thr":
+    {
+        "time": "3:00:00",
+        "mem": "1000",
+        "ntasks": "1"
     }
 }   
