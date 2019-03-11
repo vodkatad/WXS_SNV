@@ -1,0 +1,48 @@
+include: "../conf.sk"
+VARSCAN_DIR=PRJ_ROOT+"/local/share/data/bardelli_wes/varscan"
+VARSCAN_SUFFIX=".xenome_hsa.cns.cns"
+
+rule paired:
+    input: ref=VARSCAN_DIR+"/"+REF+VARSCAN_SUFFIX, other=expand(VARSCAN_DIR+"/{sampledelta}"+VARSCAN_SUFFIX, sampledelta=SAMPLESD)
+    output: 'merged.table'
+    run:
+        import pandas
+        import os
+        def p2f(x):
+           return float(x.strip('%'))/100
+        ref = pandas.read_csv(input.ref, sep="\t", index_col=["Chrom","Position","Ref","Cons"], converters={'VarFreq':p2f})
+        ref = ref[['VarFreq']]
+        #with open(output[0], 'w') as out:
+        #out.write("%s\n" % input.ref)
+        merged = pandas.DataFrame()
+        for f in input.other:
+           delta = pandas.read_csv(f, sep="\t", index_col=["Chrom","Position","Ref","Cons"], converters={'VarFreq':p2f} )
+           delta = delta[['VarFreq']]
+           m = ref.join(delta, how='right', lsuffix='_ref', rsuffix='_delta').fillna(0)
+           gained = m[(m.VarFreq_delta != 0) & (m.VarFreq_ref == 0)]
+           gained = gained[['VarFreq_delta']]
+           filename = os.path.splitext(os.path.basename(f))[0]
+           gained.rename(columns = {'VarFreq_delta': filename}, inplace = True)
+           if not merged.empty:
+              merged = merged.join(gained, how='outer').fillna(0) 
+           else:
+              merged = gained
+        merged.to_csv(output[0], sep='\t', index=True)
+
+CHRS=['hsa_chr'+str(x) for x in range(23)]+["hsa_chrX","hsa_chrY"]
+rule prepare:
+    input: 'merged.table'
+    output: 'merged.table.def'
+    params: chrs=CHRS
+    shell:
+        """
+            echo {params.chrs} | tr " " "\\n" > {output}.tmp
+            echo Chrom >> {output}.tmp
+            filter_1col 1 {output}.tmp < {input} | bawk '{{print $1"_"$2"_"$3"_"$4,$0}}' | cut -f 2,3,4,5 --complement  > {output}
+        """
+    
+rule repeated_muts_thr:
+    input: data="merged.table.def", possiblemut="../mutect2_paired/mutpositions"
+    params: debug=DEBUG, nrand=5000, thr=0.1
+    output: plotrand="thr_randomized_boxplot.pdf", plotaf="thr_af_histo.pdf", table="thr_repeated.txt"
+    script: SRC_DIR+"/randomize_recurrent_muts_thr.R"

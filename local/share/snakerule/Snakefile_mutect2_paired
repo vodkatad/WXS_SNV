@@ -15,6 +15,7 @@ rule sufficient_coverage_outof:
         """
 
 # wtf tab?
+# callable should be made of intersection between normal sample and studied one!
 rule callable:
     input: exons=SEXONS, outof="callable_outof_{sample}.bed", fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai"
     output: "callable_exons_{sample}.bed"
@@ -217,14 +218,15 @@ rule sufficient_coverage_outof_strict:
 # #TODO why duplicates?
 rule merge:
     input: vcf=expand("{sampledelta}-"+REF+".pass.vcf.gz", sampledelta=SAMPLESD), bed=expand("callable_strict_{sample}.bed", sample=SAMPLES)
-    output: "merged.vcf"
+    output: vcf="merged.vcf", mbed="merged_strict.bed"
     params: nsamples=len(SAMPLES), samps=SAMPS
     shell:
         """
-            bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output}.tmp.bed
-            bcftools merge --force-samples -R {output}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,P_CONTAM:max,P_GERMLINE:min -o {output}.tmp.vcf {input.vcf}
-            bcftools view -s {params.samps} {output}.tmp.vcf > {output}
-            rm {output}.tmp.bed {output}.tmp.vcf
+            bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output.vcf}.tmp.bed
+            bcftools merge --force-samples -R {output.vcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,P_CONTAM:max,P_GERMLINE:min -o {output.vcf}.tmp.vcf {input.vcf}
+            bcftools view -s {params.samps} {output.vcf}.tmp.vcf > {output.vcf}
+            mv {output.vcf}.tmp.bed {output.mbed}
+            rm {output.vcf}.tmp.vcf
         """
 
 rule VEP:
@@ -250,15 +252,25 @@ rule vcf_to_aftable:
 
 #(base) [mutect2]egrassi@hactarlogin$ snakemake -j 6 all_samples_pass.vcf.gz --use-singularity --singularity-args "-B /home/egrassi/:/home/egrassi/ -B /work/egrassi:/work/egrassi"  --cluster-config ../../../local/share/hactar.json --cluster-sync "sbatch --wait --parsable --mail-user={cluster.mail-user} --mail-type={cluster.mail-type} --partition={cluster.partition} --nodes={cluster.nodes} --job-name={cluster.job-name} --output={cluster.output} --error={cluster.error} --time={cluster.time} --mem={cluster.mem} --ntasks={cluster.ntasks}"
 
+#[mutect2_paired]egrassi@hactarlogin$ bawk '{s+=($3-$2)}END{print s}' merged_strict.bed
+#
+rule mutpositions:
+    input: "merged_strict.bed"
+    output: "mutpositions"
+    shell: 
+        """
+            bawk '{{s+=($3-$2)}}END{{print s}}' {input} > {output}
+        """
+
 rule repeated_muts:
-    input: data="merged.table_nomultiallele"
+    input: data="merged.table_nomultiallele", possiblemut="mutpositions"
     params: debug=DEBUG, nrand=5000
-    output: plotbin="binomial_boxplot.pdf", plotrand="randomized_boxplot.pdf", plotaf="af_histo.pdf", table="repeated.txt"
+    output: plotrand="randomized_boxplot.pdf", plotaf="af_histo.pdf", table="repeated.txt"
     script: SRC_DIR+"/randomize_recurrent_muts.R"
 
 rule repeated_muts_thr:
-    input: data="merged.table_nomultiallele"
+    input: data="merged.table_nomultiallele", possiblemut="mutpositions"
     params: debug=DEBUG, nrand=5000, thr=0.1
-    output: plotbin="thr_binomial_boxplot.pdf", plotrand="thr_randomized_boxplot.pdf", plotaf="thr_af_histo.pdf", table="thr_repeated.txt"
+    output: plotrand="thr_randomized_boxplot.pdf", plotaf="thr_af_histo.pdf", table="thr_repeated.txt"
     script: SRC_DIR+"/randomize_recurrent_muts_thr.R"
 

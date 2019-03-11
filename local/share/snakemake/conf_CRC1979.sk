@@ -1,0 +1,15 @@
+include: "../conf.sk"
+
+NAME="CRC1979"
+TREES=["XA","XB"]
+SITES=["CT","DX","SX"]
+SAMPLES = [NAME+"NORM"] + [NAME+t+s for t in TREES for s in SITES]
+
+REF=SAMPLES[0]
+SAMPLESD=SAMPLES[1:len(SAMPLES)]
+SAMPS=",".join(SAMPLESD)
+
+rule all_something:
+    input: expand("{sample}-"+REF+".{{something}}", sample=SAMPLESD)
+    output: "all_samples_{something}"
+    shell: "touch {output}"

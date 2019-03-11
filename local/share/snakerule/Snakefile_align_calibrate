@@ -2,13 +2,15 @@ include: "../conf.sk"
 
 def produce_pairs(wildcards):
         import os
-        fastqs = expand(DATA_DIR+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+        fastqs =expand(XENOME_FQ_DIR+'/'+wildcards.sample+FASTQ_SUFFIX_XENOME, pair=PAIRS_XENOME)
+        print(fastqs)
         if len(fastqs) == 2:
             if os.path.isfile(fastqs[1]):
                 #tumor pair
                 return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
             else:
-                fastqs = expand(DATA_DIR+'/'+wildcards.sample+FASTQ_SUFFIX_NORMAL, pair=PAIRS)
+                fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+                print(fastqs)
                 #normal pair
                 if os.path.isfile(fastqs[1]):
                     return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
@@ -42,9 +44,13 @@ rule bwa_mem:
     params: cores=CORES, ref=DATA_DIR+"/GRCh38.d1.vd1.fa"
     shell: 
         """
-        header=$(zcat {input.fastq1} | head -n 1) || echo "pipehead"
+        if echo {input.fastq1} | grep -q .gz; then
+            header=$(zcat {input.fastq1} | head -n 1) || echo "pipehead"
+        else
+            header=$(cat {input.fastq1} | head -n 1) || echo "pipehead"
+        fi
         id=$(echo $header | cut -f 1-4 -d":" | sed 's/^@//' | sed 's/:/_/g')
-        smnh=$(echo $header | grep -Eo "[ATGCN]+$")
+        smnh=$(echo $header | grep -Eo "[ATGCN\+]+$")
         sm={wildcards.sample}
         bwa mem -R "@RG\\tID:$id\\tSM:$sm\\tLB:$sm"_"$id"_"$smnh\\tPL:ILLUMINA" -t {params.cores} -K 100000000 -Y {params.ref} {input.fastq1} {input.fastq2} | samtools view -Shb -o {output} 
         """

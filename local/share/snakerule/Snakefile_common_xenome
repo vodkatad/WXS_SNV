@@ -1,8 +1,25 @@
 include: "conf.sk"
 
+def defineXenome(wildcards):
+    import glob
+    import re
+    import os
+    fq = glob.glob(DATA+"/"+wildcards.sample+"X*fastq.gz")
+    res = [ re.sub(r"_R\d.fastq.gz","", os.path.basename(x))+".xenome.placeholder" for x in fq]
+    return res
+
+rule all_xenome:
+    input: defineXenome
+    output: "{sample}.xen"
+    shell:
+        """
+            touch {output}
+        """
+
 def produce_pairs(wildcards):
-        import os
-        fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+        import glob
+        fastqs = glob.glob(DATA+"/"+wildcards.sample+"*.fastq.gz")
+        #fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
         if len(fastqs) == 2 and os.path.isfile(fastqs[1]):
                 return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
         else:
@@ -19,7 +36,7 @@ def produce_pairs(wildcards):
 
 rule xenome:
     input: unpack(produce_pairs)
-    output: "{sample}.xenome.placeholder"
+    #output: "{sample}.xenome.placeholder"
     params: cores=8, mem=20, xenome="/home/egrassi/common/task/sequences/dataset/gdc/xenomidx"
     log: "{sample}.xenome"
     singularity: ROOT+"/gossamer/gossamer.img"
@@ -29,14 +46,20 @@ rule xenome:
             --pairs --output-filename-prefix {wildcards.sample} -i {input.fastq1} -i {input.fastq2}
         """
 
-#todo
-#rule checkxenome:
-#    input: unpack(produce_pairs)
-#    output: "{sample}.xenome.placeholder"
-# zcat  {input.fastq2} {inpu.fastq1} | wc -l
-# wc -l {sample}.fastq
-# compare
-# gzip
+rule checkxenome:
+    input: unpack(produce_pairs)
+    output: "{sample}.xenome.placeholder"
+    shell:
+       """
+        tot1=$(zcat {input.fastq2} {input.fastq1} | wc -l)
+        tot2=$(cat {wildcards.sample}_*.fastq | wc -l)
+        if [ $tot1 = $tot2 ]; then
+            echo -e "ok\t$tot1\t$tot2" > {output}
+        else
+            echo -e "error\t$tot1\t$tot2" > {output}
+        fi
+       """  
+
 
 # todo rule to touch fastq files with the right age
 
@@ -51,7 +74,7 @@ rule add_chr_to_vcf_porc:
 
 rule sort_targeted_porc:
     input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
-    output: SEXONS
+    output: LSEXONS
     shell:
         """
             bedtools sort -faidx {input.fai} -i {input.bed} > {output}
