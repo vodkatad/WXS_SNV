@@ -21,7 +21,7 @@ rule callable:
     output: "callable_exons_{sample}.bed"
     shell:
         """ 
-            cat {input.exons} {input.outof} | bedtools sort -faidx {input.fai} -i - > {output}.tmp
+            cat {input.exons} {input.outof} | bawk 'NF==4{{print $0}} NF==3 {{print $0,"plhdr"}}' | bedtools sort -faidx {input.fai} -i - > {output}.tmp
             bedtools merge -i {output}.tmp > {output}
             rm {output}.tmp
         """
