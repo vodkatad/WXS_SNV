@@ -13,3 +13,8 @@ rule all_something:
     input: expand("{sample}-"+REF+".{{something}}", sample=SAMPLESD)
     output: "all_samples_{something}"
     shell: "touch {output}"
+
+rule all_single_something:
+    input: expand("{sample}.{{something}}", sample=SAMPLES)
+    output: "all_samples_{something}"
+    shell: "touch {output}"
