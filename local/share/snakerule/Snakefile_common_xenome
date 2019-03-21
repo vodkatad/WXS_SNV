@@ -114,3 +114,11 @@ rule sort_targeted_porc:
         """
             bedtools sort -faidx {input.fai} -i {input.bed} > {output}
         """
+
+rule refflat:
+    input: REFFLATGZ
+    output: "refFlat.txt"
+    shell:
+        """
+           gunzip -c {input} > {output}
+        """

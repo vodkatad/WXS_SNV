@@ -1,0 +1,90 @@
+include: "../conf.sk"
+
+# not using an subworkflow here to reduce dependencies nightmares, this will be run after mutect2
+rule batch:
+    input: bamdelta=expand("../align_calibrate/realigned_{sample}.sorted.bam", sample=SAMPLESD), bed=SEXONS, reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
+    output: o1="cnv/reference.cnn", o2="cnv.plh"
+    log: "cnv.log"
+    singularity: ROOT+"/cnvkit/cnvkit.img"
+    shell: 
+        """
+            cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
+            --targets {input.bed} --annotate {input.refFlat} \
+            --fasta {input.reference} \
+            --output-dir cnv/ \
+            --diagram --scatter \
+            2> {log}
+            touch {output.o2}
+        """
+
+# does not work in multithreaded mode
+# Job ID: 52254
+# Cluster: hactar
+# User/Group: egrassi/egrassi
+# State: COMPLETED (exit code 0)
+# Cores: 1
+# CPU Utilized: 02:53:54
+# CPU Efficiency: 93.85% of 03:05:18 core-walltime
+# Job Wall-clock time: 03:05:18
+# Memory Utilized: 486.95 MB
+# Memory Efficiency: 2.43% of 19.53 GB
+#
+#
+# TODO find a way to pass cnr or s as an argument
+def findCns(wildcards):
+    import glob
+    r = glob.glob(wildcards.directory+"/*cns")
+    r.sort()
+    return r
+
+def findCnr(wildcards):
+    import glob
+    r = glob.glob(wildcards.directory+"/*cnr")
+    r.sort()
+    return r
+
+rule heatmap:
+    input: cns=findCns, plh="{directory}.plh"
+    output: "{directory}.heatmap.pdf"
+    singularity: ROOT+"/cnvkit/cnvkit.img"
+    shell:
+        """
+            cnvkit.py heatmap {input.cns} -d -o {output}
+        """
+
+rule metrics:
+    input: cns=findCns, cnr=findCnr, plh="{directory}.plh"
+    output: "{directory}.metrics"
+    singularity: ROOT+"/cnvkit/cnvkit.img"
+    shell:
+        """
+            cnvkit.py metrics {input.cnr} -s {input.cns} -o {output}
+        """
+
+# Emptying python path as a first command worked but it should be fixed by https://bitbucket.org/snakemake/snakemake/commits/358c69c37507
+#PYTHONPATH=""
+# updated snakemake, was fixed in 2018
+rule try:   
+    output: "help"
+    singularity: ROOT+"/cnvkit/cnvkit.img"
+    shell:
+        """
+            cnvkit.py batch -h 2> {output}
+        """
+
+rule batchone:
+    input: bamdelta="../align_calibrate/realigned_{sample}.sorted.bam", bed=SEXONS, reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
+    output: o1="{sample}/reference.cnn", o2="{sample}.plh"
+    log: "{sample}.log"
+    singularity: ROOT+"/cnvkit/cnvkit.img"
+    shell: 
+        """
+            cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
+            --targets {input.bed} --annotate {input.refFlat} \
+            --fasta {input.reference} \
+            --output-dir {wildcards.sample}/ \
+            --diagram --scatter \
+            2> {log}
+            touch {output.o2}
+        """
+

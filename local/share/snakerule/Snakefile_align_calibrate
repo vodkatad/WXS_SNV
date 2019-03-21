@@ -201,9 +201,13 @@ rule recalibrate_plot:
 #https://www.biostars.org/p/283279/
 #according to https://www.biostars.org/p/207536/
 # https://github.com/AstraZeneca-NGS/VarDict
+
+rule sort_all_realigned:
+    input: expand("realigned_{samples}.sorted.bam", samples=SAMPLES)
+    
 rule sorted_bai:
     input: "{whatever}.bam"
-    output: bai="{whatever}.sorted.bam.bai", bam=temp("{whatever}.sorted.bam")
+    output: bai="{whatever}.sorted.bam.bai", bam="{whatever}.sorted.bam"
     params: threads="8"
     shell: 
         """
@@ -252,6 +256,30 @@ rule coverage_plot:
     params: debug=DEBUG
     script: SRC_DIR+"/coverage_plot.R"
 
+
+rule coverage_plot_bis:
+    input: bam="realigned_{sample}.sorted.bam", bai="realigned_{sample}.sorted.bam.bai", bed=SEXONS
+    output: temp("depth/{sample}.mosdepth.region.dist.txt")
+    params: thread=12, prefix="depth/{sample}"
+    shell:
+        """ 
+            mkdir -p depth
+            mosdepth -n -t {params.thread} --by {input.bed} {params.prefix} {input.bam}
+        """
+
+#rm blah depth/CRC1979XBSX.regions.bed.gz is 2Mb
+
+rule coverage_plot_all:
+    input: expand("depth/{sample}.mosdepth.region.dist.txt", sample=SAMPLES)
+    output: "depth/exons_covplot.html"
+    params: tool=SRC_DIR+"/plot_dist.py"
+    shell:
+        """
+            python {params.tool} {input}
+            mv dist.html {output}
+        """
+
+
 # This was a srun, estimated runtime top 30'
 #[align_calibrate]egrassi@hactarlogin$ seff 30595
 #Job ID: 30595
@@ -264,3 +292,36 @@ rule coverage_plot:
 #Job Wall-clock time: 00:30:46
 #Memory Utilized: 4.62 GB
 #Memory Efficiency: 31.55% of 14.65 GB
+rule interval:
+    input: bed=SEXONS, sd=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    output: "target.interval_list"
+    shell:
+        """
+            picard BedToIntervalList \
+              I={input.bed} \
+              O={output} \
+              SD={input.sd}
+        """
+
+# tODO change in CollectHsMetrics -I realigned_CRC1979NORM.sorted.bam -O CRC1979NORM.hsmetrics -R /work/egrassi/WXS/local/share/data/GRCh38.d1.vd1.fa -BAIT_INTERVALS target.interval_list -TARGET_INTERVALS target.interval_list
+rule hsmetrics:
+    input: bam="realigned_{sample}.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", il="target.interval_list"
+    output: "{sample}.hsmetrics"
+    shell:
+        """
+            picard -Xmx2g  CollectHsMetrics \
+            I={input.bam} \
+            O={output} \
+            R={input.reference} \
+            BAIT_INTERVALS={input.il} \
+            TARGET_INTERVALS={input.il}
+       """
+
+rule hsmetrics_summary:
+    input: expand("{sample}.hsmetrics", sample=SAMPLES)
+    output: "all_metrics"
+    shell:
+        """
+             grep BAIT_SET {input[0]} > {output}
+             for f in {input}; do grep -A 1 BAIT_SET $f | tail -n 1 >> {output}; done
+        """
