@@ -45,3 +45,9 @@ GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
 VEP_CACHE_DIR=ROOT+"/common/task/variant_annotations/dataset/VEP"
 REFFLAT="../../refFlat.txt"
 REFFLATGZ=ROOT+"/common/task/annotations/dataset/ucsc/hg38/refFlat.txt.gz"
+
+# Singularity containers
+GATK_SING=ROOT+"/gatk4100/gatk.img"
+
+YARA_INDEX="TODO"
+G_REF="TODO"
