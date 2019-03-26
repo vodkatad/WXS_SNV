@@ -14,7 +14,7 @@
     },
     "bwa_mem":
     {
-        "time": "unlimited",
+        "time": "05:00:00",
         "mem": "9600",
         "ntasks": "4"
     },
