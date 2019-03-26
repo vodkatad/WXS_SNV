@@ -1,0 +1,63 @@
+include: "../conf.sk"
+
+def produce_pairs(wildcards):
+        import os
+        fastqs =expand(XENOME_FQ_DIR+'/'+wildcards.sample+FASTQ_SUFFIX_XENOME, pair=PAIRS_XENOME)
+        print(fastqs)
+        if len(fastqs) == 2:
+            if os.path.isfile(fastqs[1]):
+                #tumor pair
+                return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
+            else:
+                fastqs = expand(DATA+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
+                print(fastqs)
+                #normal pair
+                if os.path.isfile(fastqs[1]):
+                    return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
+                else:
+                    print("Error no normal or tumor fastq found!")
+                    return {}
+        else:
+            print("I want paired samples!")
+            return {}
+
+rule bwa_mem:
+    input: unpack(produce_pairs)
+    output: temp("{sample}.bam")
+    params: cores=CORES, ref=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    shell: 
+        """
+        if echo {input.fastq1} | grep -q .gz; then
+            header=$(zcat {input.fastq1} | head -n 1) || echo "pipehead"
+        else
+            header=$(cat {input.fastq1} | head -n 1) || echo "pipehead"
+        fi
+        id=$(echo $header | cut -f 1-4 -d":" | sed 's/^@//' | sed 's/:/_/g')
+        smnh=$(echo $header | grep -Eo "[ATGCN\+]+$")
+        sm={wildcards.sample}
+        bwa mem -R "@RG\\tID:$id\\tSM:$sm\\tLB:$sm"_"$id"_"$smnh\\tPL:ILLUMINA" -t {params.cores} -K 100000000 -Y {params.ref} {input.fastq1} {input.fastq2} | samtools view -Shb -o {output} 
+        """
+
+#Dopo QC e xenome 
+
+# Yara mapper on hsa_mmu (Ti passo gli indici)
+#yara_mapper -v -sa tag -t 10 -o /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/align/hsa_mmu/CRC0542LMX0B04006TUMD02000.xenome.bam /media/gurgese/andromeda/pdx/genome/yara/hsa_mmu/GRCh38.d1.vd1_GCA1635.5GRC38.p3 /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/raw/CRC0542LMX0B04006TUMD02000.xenome_graft_1.fastq.gz /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/raw/CRC0542LMX0B04006TUMD02000.xenome_graft_2.fastq.gz >> /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/align/hsa_mmu/yara.log
+
+# Yara mapper on hsa
+#yara_mapper -v -sa tag -t 10 -o /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/align/hsa/CRC0542LMX0B04006TUMD02000.xenome.bam /media/gurgese/andromeda/pdx/genome/yara/hsa/GRCh38.d1.vd1 /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/raw/CRC0542LMX0B04006TUMD02000.xenome_graft_1.fastq.gz /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/raw/CRC0542LMX0B04006TUMD02000.xenome_graft_2.fastq.gz >> /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/align/hsa/yara.log
+
+# Sort BAM
+#/usr/bin/samtools-1.9/samtools sort -O BAM -@ 1 -o /media/gurgese/dragone/pdx/sort/hsa_mmu/CRC0542LMX0B04006TUMD02000.xenome.bam /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/align/hsa_mmu/CRC0542LMX0B04006TUMD02000.xenome.bam
+
+# Sort Pileup
+#/usr/bin/samtools-1.9/samtools mpileup -B -q 1 -f /media/gurgese/backup/genomes/hsa_mmu/GRCh38.d1.vd1_GCA1635.5GRC38.p3.fa -o /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B01001TUMD11000.xenome_hsa.mpileup /media/gurgese/andromeda/pdx/PDX_WES_Bardelli/sort/hsa_mmu_filtered/CRC0542LMX0B01001TUMD11000.xenome_hsa.bam
+
+#java -jar /home/gurgese/tools/varscan/VarScan.jar pileup2cns /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B04006TUMD02000.xenome_hsa.mpileup --min-coverage 10 --min-var-freq 0.01 --p-value 0.05 > /media/gurgese/phoenix/pdx/varscan/CRC0542LMX0B04006TUMD02000.xenome_hsa.cns
+
+#Varscan somatic difference
+#http://varscan.sourceforge.net/using-varscan.html#v2.3_somatic
+#java -jar /home/gurgese/tools/varscan/VarScan.jar somatic /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B01001TUMD11000.xenome_hsa.mpileup /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B04006TUMD02000.xenome_hsa.mpileup /media/gurgese/andromeda/pdx/varscan/cnv/CRC0542LMX0B04006TUMD02000.xenome_hsa_3_1 --min-coverage 10
+
+#java -jar /home/gurgese/tools/varscan/VarScan.jar copynumber /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B01001TUMD11000.xenome_hsa.mpileup /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B04006TUMD02000.xenome_hsa.mpileup /media/gurgese/andromeda/pdx/varscan/cnv/CRC0542LMX0B04006TUMD02000.xenome_hsa_3_1 --min-coverage 10
+
+#SEGMENTAZIONE
