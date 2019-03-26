@@ -1,0 +1,30 @@
+include: "../conf.sk"
+
+# not using an subworkflow here to reduce dependencies nightmares, this will be run after mutect2
+# skip?
+rule cns:
+    input: "{sample}.mpileup"
+    output: "{sample}.cns"
+    shell:
+        """
+            VarScan pileup2cns {input} --min-coverage 10 --min-var-freq 0.01 --p-value 0.05 > {output}
+        """
+#java -jar /home/gurgese/tools/varscan/VarScan.jar pileup2cns /media/gurgese/pegasus/pdx/mpileup/CRC0542LMX0B04006TUMD02000.xenome_hsa.mpileup --min-coverage 10 --min-var-freq 0.01 --p-value 0.05 > /media/gurgese/phoenix/pdx/varscan/CRC0542LMX0B04006TUMD02000.xenome_hsa.cns
+
+rule somatic:
+    input: ref="../yara/"+REF+".mpileup", delta="../yara/{sample}.mpileup"
+    output: "{sample}.boh"
+    shell:
+        """ 
+            VarScan somatic {input.ref} {input.delta}
+        """  
+
+rule cnv_step1:
+    input: ref="../yara/"+REF+".mpileup", delta="../yara/{sample}.mpileup"
+    output: "{sample}.boh2"
+    shell:
+        """
+            VarScan copynymber {input.ref} {input.delta} {output} --min-coverage 10
+        """
+
+#TODO SEGMENTAZIONE
