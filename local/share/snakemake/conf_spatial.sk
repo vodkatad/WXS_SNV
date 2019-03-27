@@ -25,6 +25,7 @@ MEM=4
 PATTERNED=2500 
 # HiSeq4000, otherwise 100 for unpatterned
 #–o recal.bam
+LOWERAF="0.0000025"
 
 wildcard_constraints:
     sample="[a-zA-Z0-9]+"

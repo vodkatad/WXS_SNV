@@ -51,7 +51,7 @@ rule mutectpaired:
     input: bamdelta=aligncalibrateflow("../align_calibrate/realigned_{sampledelta}.bam"), gnomad=GNOMAD+"/af-only-gnomad.hg38.vcf.gz", bed="callable_exons_{sampleref}.bed", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref=aligncalibrateflow("../align_calibrate/realigned_{sampleref}.bam")
     output: vcf="{sampledelta}-{sampleref}.vcf.gz"
     singularity: GATK_SING
-    params: loweraf="0", padding=PADDING
+    params: loweraf=LOWERAF, padding=PADDING
     shell: 
         """
             gatk Mutect2 -tumor {wildcards.sampledelta} -I {input.bamdelta} -normal {wildcards.sampleref} -I {input.bamref} -R {input.reference} -O {output.vcf} --interval-padding {params.padding} --germline-resource {input.gnomad} -L {input.bed}

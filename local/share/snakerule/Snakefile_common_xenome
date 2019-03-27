@@ -36,7 +36,7 @@ def produce_pairs(wildcards):
 
 rule xenome:
     input: unpack(produce_pairs)
-    output: "{sample}.xenome.placeholder"
+    #output: "{sample}.xenome.placeholder"
     params: cores=8, mem=20, xenome="/home/egrassi/common/task/sequences/dataset/gdc/xenomidx"
     log: "{sample}.xenome"
     singularity: ROOT+"/gossamer/gossamer.img"
@@ -48,7 +48,7 @@ rule xenome:
 
 rule checkxenome:
     input: unpack(produce_pairs)
-    #output: "{sample}.xenome.placeholder"
+    output: "{sample}.xenome.placeholder"
     shell:
        """
         tot1=$(zcat {input.fastq2} {input.fastq1} | wc -l)
