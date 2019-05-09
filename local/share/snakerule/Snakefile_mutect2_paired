@@ -56,6 +56,21 @@ rule mutectpaired:
         """
             gatk Mutect2 -tumor {wildcards.sampledelta} -I {input.bamdelta} -normal {wildcards.sampleref} -I {input.bamref} -R {input.reference} -O {output.vcf} --interval-padding {params.padding} --germline-resource {input.gnomad} -L {input.bed}
         """
+
+rule mutectall:
+    input: bamall=expand("../align_calibrate/realigned_{sample}.bam", sample=SAMPLESD), gnomad=GNOMAD+"/af-only-gnomad.hg38.vcf.gz", bed="merged_strict.bed", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref=aligncalibrateflow("../align_calibrate/realigned_"+REF+".bam")
+    output: vcf="all.vcf.gz"
+    singularity: GATK_SING
+    params: ref=REF, padding=PADDING
+    shell: 
+        """
+            IARG=""
+            for b in {input.bamall}; do
+                IARG="${{IARG}} -I $b";
+            done
+            gatk Mutect2 $IARG -normal {params.ref} -I {input.bamref} -R {input.reference} -O {output.vcf} --interval-padding {params.padding} --germline-resource {input.gnomad} -L {input.bed}
+        """
+    
     
 #with snptba as germline:
 #Job ID: 31864
@@ -132,7 +147,15 @@ rule filtercalls:
             gatk FilterMutectCalls -V {input.vcf} --contamination-table {input.contamination} -O {output.vcf} --stats {output.stats}
         """
 
-
+rule filterallcalls:
+    input: vcf="all.vcf.gz"
+    output: vcf="all.filtered.vcf.gz", stats="all_filtering_stats.tsv"
+    singularity: GATK_SING
+    shell:
+        """
+            gatk FilterMutectCalls -V {input.vcf} -O {output.vcf} --stats {output.stats}
+        """
+    
 # XXX better to adopt a not conflicting naming convention or use patterns in wildcards (negation did not work in 2017)?
 #ruleorder:  filtercalls > mutect
 # 
@@ -151,14 +174,14 @@ rule filtercalls:
 
 
 #- artifacts: removed bed interval due to format requirements and who cares and dbsnp due to a nullpointerexception (...)
-#rule artifacts:
-#    input: bam=aligncalibrateflow("../align_calibrate/realigned_{sample}.bam"), reference=DATA_DIR+"/GRCh38.d1.vd1.fa"
-#    output: "{sample}.artifacts.pre_adapter_summary_metrics"
-#    singularity: ROOT+"/gatk/gatk.img"
-#    shell:
-#        """
-#            gatk CollectSequencingArtifactMetrics -R {input.reference} -I {input.bam} -O {wildcards.sample}.artifacts
-#        """
+rule artifacts:
+    input: bam=aligncalibrateflow("../align_calibrate/realigned_{sample}.bam"), reference=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    output: "{sample}.artifacts.pre_adapter_summary_metrics"
+    singularity: ROOT+"/gatk/gatk.img"
+    shell:
+        """
+            gatk CollectSequencingArtifactMetrics -R {input.reference} -I {input.bam} -O {wildcards.sample}.artifacts
+        """
 
 
 #Job ID: 33044
@@ -195,14 +218,25 @@ rule filterOrientation:
 
 # We remove the POP_AF=1, they are SNP where the reference is mutated, all gnomad has alternate allele, not a somatic mutation
 # I think.
+# has been fixed in gatk 4.1.1.0:
+# https://github.com/broadinstitute/gatk/pull/5535/commits/4b405e4e7dfe187dd3c039ceb2d26863e8634903
 rule passFilter:
     input: "{sampledelta}-{sampleref}.filtered.vcf.gz"
     output: "{sampledelta}-{sampleref}.pass.vcf.gz"
     shell:
         """
-        zcat {input} |  awk '/^#/ || $7=="PASS"' | grep -v 'POP_AF=1.00;' | bgzip > {output}
+        zcat {input} |  awk '/^#/ || $7=="PASS"' | bgzip > {output}
         tabix {output}
         """ 
+
+rule passFilterAll:
+    input: "all.filtered.vcf.gz"
+    output: "all.pass.vcf.gz"
+    shell:
+        """
+        zcat {input} |  awk '/^#/ || $7=="PASS"' | bgzip > {output}
+        tabix {output}
+        """
 
 ################ we have to filter more
 rule sufficient_coverage_outof_strict:
@@ -223,7 +257,7 @@ rule merge:
     shell:
         """
             bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output.vcf}.tmp.bed
-            bcftools merge --force-samples -R {output.vcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,P_CONTAM:max,P_GERMLINE:min -o {output.vcf}.tmp.vcf {input.vcf}
+            bcftools merge --force-samples -R {output.outputuvcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,CONTQ:min,GERMQ:min -o {output.vcf}.tmp.vcf {input.vcf}
             bcftools view -s {params.samps} {output.vcf}.tmp.vcf > {output.vcf}
             mv {output.vcf}.tmp.bed {output.mbed}
             rm {output.vcf}.tmp.vcf
@@ -249,7 +283,37 @@ rule vcf_to_aftable:
             cat {output.table}.tmp >> {output.table}
         """
 
+rule all_to_aftable:
+    input: vcf="all.pass.vcf.gz", mbed="merged_strict.bed"
+    output: table="all_aftable"
+    params: nsamples=len(SAMPLESD)
+    shell:
+        """
+             intersectBed -a {input.vcf} -b {input.mbed} -header > {input.vcf}.tmp
+             cat {input.vcf}.tmp | grep -v "^##" |  perl -ane '@gt=splice(@F,9,{params.nsamples}); $gt=""; foreach $g (@gt) {{ if ($.==1) {{$gt.=$g."\\t";}} else {{ @afs = split(":",$g); if ($afs[2] eq ".") {{$afs[2]=0;}} $gt.=$afs[2]."\\t";}} }} chop($gt) ; print $F[0]."_".$F[1]."_".$F[3]."_".$F[4]."\\t".$gt."\\n";' | grep -v "," | tee >(bawk 'NR==1' > {output.table}) | sed 1d | sort | uniq > {output.table}.tmp
+            cat {output.table}.tmp >> {output.table}
+            rm {input.vcf}.tmp 
+        """
 
+
+rule all_binary:
+    input: vcf="all.pass.vcf.gz", mbed="merged_strict.bed"
+    output: table="all_bin_table"
+    params: tool=BIN_DIR+"/multisample_vcf_tobinary"
+    shell:
+        """
+            intersectBed -a {input.vcf} -b {input.mbed} -header > {input.vcf}.tmp
+            {params.tool} {input.vcf}.tmp | tee >(bawk 'NR==1' | cut -f 2 --complement > {output.table}) | sed 1d | sort | uniq | cut -f 2 --complement >> {output.table} 
+            rm {input.vcf}.tmp 
+        """
+
+rule repeated_muts_all:
+    input: data="all_bin_table", possiblemut="mutpositions"
+    params: debug=DEBUG, nrand=5000
+    output: plotrand="all_randomized_boxplot.pdf", plotaf="all_af_histo.pdf", table="all_repeated.txt"
+    script: SRC_DIR+"/randomize_recurrent_muts.R"
+
+    
 #(base) [mutect2]egrassi@hactarlogin$ snakemake -j 6 all_samples_pass.vcf.gz --use-singularity --singularity-args "-B /home/egrassi/:/home/egrassi/ -B /work/egrassi:/work/egrassi"  --cluster-config ../../../local/share/hactar.json --cluster-sync "sbatch --wait --parsable --mail-user={cluster.mail-user} --mail-type={cluster.mail-type} --partition={cluster.partition} --nodes={cluster.nodes} --job-name={cluster.job-name} --output={cluster.output} --error={cluster.error} --time={cluster.time} --mem={cluster.mem} --ntasks={cluster.ntasks}"
 
 #[mutect2_paired]egrassi@hactarlogin$ bawk '{s+=($3-$2)}END{print s}' merged_strict.bed

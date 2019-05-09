@@ -66,6 +66,12 @@
         "mem": "2500",
         "ntasks": "1"
     },
+    "mutectall":
+    {
+        "time": "140:00:00",
+        "mem": "2500",
+        "ntasks": "1"
+    },
     "getpileup":
     {
         "time": "02:30:00",
