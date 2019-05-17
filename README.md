@@ -1,5 +1,6 @@
 # WXS_SNV
-Snakemake pipeline to call SNV in hybridization capture data
+Snakemake pipeline to call SNV in hybridization capture data adapted for multiple samples of a same tumor.
+(+WIP on CNV calling)
 
 Made following 
 https://gatkforums.broadinstitute.org/gatk/discussion/11136/how-to-call-somatic-mutations-using-gatk4-mutect2
@@ -18,7 +19,7 @@ To produce the GATK singularity image the recipe is in local/src, then
 `singularity build gatk.img gatk.recipe` if you have root access.
 
 Otherwise:
-`singularity pull --name gatk.img docker://broadinstitute/gatk:4.0.11.0`
+`singularity pull --name gatk.img docker://broadinstitute/gatk:4.1.0.0`
 Right now Snakefiles load the image from `ROOT+"/gatk/gatk.img"`.
 
 # Singularity for CNVkit
