@@ -1,4 +1,5 @@
 include: "../conf.sk"
+GATK_SING=ROOT+"/gatk4100/gatk.img"
 
 # XXX better to have a variable with align dir?
 subworkflow aligncalibrateflow:
@@ -47,6 +48,7 @@ rule callable:
 ## loweraf = 0 without normal to avoid too strict filters on germlinea
 #https://gatkforums.broadinstitute.org/gatk/discussion/10157/gatk4-beta-no-filter-passing-variants-in-mutect2-tumor-only-runs-using-default-parameters
 ## TODO bed should be intersection of callable ref and delta
+LOWERAF="0" ### I am not sure about which LOWERAF as run here...
 rule mutectpaired:
     input: bamdelta=aligncalibrateflow("../align_calibrate/realigned_{sampledelta}.bam"), gnomad=GNOMAD+"/af-only-gnomad.hg38.vcf.gz", bed="callable_exons_{sampleref}.bed", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref=aligncalibrateflow("../align_calibrate/realigned_{sampleref}.bam")
     output: vcf="{sampledelta}-{sampleref}.vcf.gz"
@@ -257,7 +259,7 @@ rule merge:
     shell:
         """
             bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output.vcf}.tmp.bed
-            bcftools merge --force-samples -R {output.outputuvcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,CONTQ:min,GERMQ:min -o {output.vcf}.tmp.vcf {input.vcf}
+            bcftools merge --force-samples -R {output.output.vcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,CONTQ:min,GERMQ:min -o {output.vcf}.tmp.vcf {input.vcf}
             bcftools view -s {params.samps} {output.vcf}.tmp.vcf > {output.vcf}
             mv {output.vcf}.tmp.bed {output.mbed}
             rm {output.vcf}.tmp.vcf

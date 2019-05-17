@@ -1,6 +1,7 @@
 ROOT='/home/egrassi'
 PRJ_ROOT='/work/egrassi/WXS'
 SRC_DIR=PRJ_ROOT+'/local/src'
+BIN_DIR=PRJ_ROOT+'/local/bin'
 DATA_DIR=PRJ_ROOT+'/local/share/data'
 DEBUG="yes"
 
