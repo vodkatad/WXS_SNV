@@ -1,6 +1,6 @@
 include: "../conf.sk"
 
-NAME="CRC1979"
+NAME="CRC1989"
 TREES=["XA","XB"]
 SITES=["CT","DX","SX"]
 SAMPLES = [NAME+"NORM"] + [NAME+t+s for t in TREES for s in SITES]

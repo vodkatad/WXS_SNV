@@ -96,7 +96,7 @@ onerandpupido <- function(alldata, samples, muts) {
   count <- apply(r,1, function(x) {sum(x>0)})
   res <- as.data.frame(table(count))
   res$count <- as.numeric(res$count)
-  if (nrow(res) != samples) {
+  if (nrow(res) != samples) { # TODO FIXME CHANGE TO WHILE (iff more than the last n. of samples does not occurr randomly)
     res <- rbind(res, c(samples, 0))
   }
   res

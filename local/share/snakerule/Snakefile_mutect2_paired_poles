@@ -1,5 +1,19 @@
 include: "../conf.sk"
 GATK_SING=ROOT+"/gatk4100/gatk.img"
+# TODO rules to make each sample the ref one by one
+SAMPLES=SAMPLESD
+REF=SAMPLESD[0]
+SAMPLESD=SAMPLES[1:len(SAMPLES)]
+SAMPS=",".join(SAMPLESD)
+
+rule check:
+    params: vs=SAMPLESD, ref=REF
+    shell:
+        """
+            echo {params.vs}
+            echo "vs"
+            echo {params.ref}
+        """
 
 # XXX better to have a variable with align dir?
 subworkflow aligncalibrateflow:
@@ -60,7 +74,7 @@ rule mutectpaired:
         """
 
 rule mutectall:
-    input: bamall=expand("../align_calibrate/realigned_{sample}.bam", sample=SAMPLESD), gnomad=GNOMAD+"/af-only-gnomad.hg38.vcf.gz", bed="merged_strict.bed", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref=aligncalibrateflow("../align_calibrate/realigned_"+REF+".bam")
+    input: bamall=expand("../align_calibrate/realigned_{sample}.bam", sample=SAMPLESD), gnomad=GNOMAD+"/af-only-gnomad.hg38.vcf.gz", bed="../mutect2/merged_strict.bed", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref=aligncalibrateflow("../align_calibrate/realigned_"+REF+".bam")
     output: vcf="all.vcf.gz"
     singularity: GATK_SING
     params: ref=REF, padding=PADDING
@@ -253,19 +267,26 @@ rule sufficient_coverage_outof_strict:
 # Skip sites where FILTER column does not contain any of the strings listed in LIST. For example, to include only sites which have no filters set, use -f .,PASS.
 # #TODO why duplicates?
 rule merge:
-    input: vcf=expand("{sampledelta}-"+REF+".pass.vcf.gz", sampledelta=SAMPLESD), bed=expand("callable_strict_{sample}.bed", sample=SAMPLES)
-    output: vcf="merged.vcf", mbed="merged_strict.bed"
+    input: vcf=expand("{sampledelta}-"+REF+".pass.vcf.gz", sampledelta=SAMPLESD), bed=expand("callable_strict_{sample}.bed", sample=SAMPLES), mbed="merged_strict.bed"
+    output: vcf="merged.vcf"
     params: nsamples=len(SAMPLES), samps=SAMPS
     shell:
         """
-            bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output.vcf}.tmp.bed
-            bcftools merge --force-samples -R {output.vcf}.tmp.bed --missing-to-ref -m none -i DP:avg,TLOD:min,CONTQ:min,GERMQ:min -o {output.vcf}.tmp.vcf {input.vcf}
+            bcftools merge --force-samples -R {input.mbed} --missing-to-ref -m none -i DP:avg,TLOD:min,CONTQ:min,GERMQ:min -o {output.vcf}.tmp.vcf {input.vcf}
             bcftools view -s {params.samps} {output.vcf}.tmp.vcf > {output.vcf}
-            mv {output.vcf}.tmp.bed {output.mbed}
             rm {output.vcf}.tmp.vcf
         """
 
-rule VEP:
+rule merge_bed:
+    input: bed=expand("callable_strict_{sample}.bed", sample=SAMPLES)
+    output: mbed="merged_strict.bed"
+    params: nsamples=len(SAMPLES), samps=SAMPS
+    shell:
+        """
+            bedtools multiinter -i {input.bed} | bawk '$4=={params.nsamples}' | bedtools merge -i - > {output.mbed}
+        """
+
+rule VEP:   
     input: "merged.vcf"
     output: txt="merged.vep.txt", html="merged.vep.stats.html", vcf="merged.vcf.id"
     params: cd=VEP_CACHE_DIR
@@ -339,22 +360,4 @@ rule repeated_muts_thr:
     params: debug=DEBUG, nrand=5000, thr=0.1
     output: plotrand="thr_randomized_boxplot.pdf", plotaf="thr_af_histo.pdf", table="thr_repeated.txt"
     script: SRC_DIR+"/randomize_recurrent_muts_thr.R"
-
-
-
-###
-rule single_table:
-    input: vcf="{sample}-"+REF+".pass.vcf.gz"
-    output: "{sample}-"+REF+".pass.table.gz"
-    params: nsamples=1
-    shell:
-        """
-      zcat {input} | grep -v "^##" |  perl -ane '@gt=splice(@F,10,{params.nsamples}); $gt=""; foreach $g (@gt) {{ if ($.==1) {{$gt.=$g."\\t";}} else {{ @afs = split(":",$g); if ($afs[2] eq ".") {{$afs[2]=0;}} $gt.=$afs[2]."\\t";}} }} chop($gt) ; print $F[2]."\\t".$gt."\\n";' | grep -v "," | gzip > {output}
-        """
-
-rule neutral_sottoriva:
-    input: afmatrix="{sample}-"+REF+".pass.table.gz"
-    params: debug=DEBUG, afcolumn="{sample}"
-    output: hist="{sample}.hist.{loweraf}_{higheraf}.pdf", fit="{sample}.fit.{loweraf}_{higheraf}.pdf", r2="{sample}.fit.{loweraf}_{higheraf}.r2"
-    script: SRC_DIR+"/neutral_sottoriva.R"
 

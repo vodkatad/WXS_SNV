@@ -15,6 +15,7 @@ data <- read.table(gzfile(data), sep="\t", header=TRUE)
 af <- data[,afcolumn, drop=FALSE]
 
 exsubcl <- af[af<higheraf & af>loweraf]
+exsubcl_nohigh <- af[af >= 0] # < 0.6 for may 2019 used plots (always better and easy reproducibility...)
 excum <- sapply(1:length(exsubcl),function(i)sum(exsubcl[i]<=exsubcl[1:length(exsubcl)]))
 invf <- 1/exsubcl
 maxi <- length(invf)
@@ -24,14 +25,14 @@ sfit <- summary(model)
 dr2 <- data.frame(r=sfit$r.squared)
 write.table(dr2, file=r2, sep="\t", quote=F)
 pdf(fit)
-plot(invf, excum, xaxt='n', main=paste0("R2=", round(sfit$r.squared, digits=3)))
+plot(invf, excum, cex=1.5, xaxt="n", xlab='1/f', ylab="Cumulative n. of muts M(f)", main=paste0("R2=", round(sfit$r.squared, digits=3)))
 oi <- invf[order(invf)]
 oex <- exsubcl[order(-exsubcl)]
 axis(1, at=oi[labels],labels=paste0("1/",oex[labels]), las=2)
-abline(model)
+abline(model, col="red")
 graphics.off()
 pdf(histo)
-hist(exsubcl, breaks=50)
+hist(exsubcl_nohigh, breaks=50, cex=1.5, xlab="Allelic frequency (f)", ylab="Number of muts", border="white", col="black", main="")
 graphics.off()
 
 if (debug == "yes") {
