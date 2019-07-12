@@ -89,14 +89,48 @@ rule touch:
         with open(output[0], 'w') as o:
             o.close()
                         
+rule touch2:
+    input: info="{sample}.xenomeinfo"
+    output: "{sample}.touched2"
+    run:
+        with open(input.info, 'r') as info:
+            for l in info.readlines():
+                l = l.rstrip()
+                values = l.split(" ")
+                print(values[1])
+
 #resorting to python after some horrible bash attepts:
 #fq=$(find . -name "{wildcards.sample}*.fastq" -printf '%f\\n')
 #times=$(find . -name "{wildcards.sample}*.fastq" -printf '%f\\n')
 #for ((i=0;i<${{#fq[@]}};++i)); do
 #echo "touch -d ${{times[$i]}} ${{fq[$i]}}"
-
-
-# todo rule to touch fastq files with the right age
+rule murine_content:
+    input: info="{sample}.xenomeinfo"
+    output: percs="{sample}.murine"
+    run: 
+        with open(input.info, 'r') as info:
+            dictio_reads = {}
+            for l in info.readlines():
+                l = l.strip()
+                values = l.split(" ")
+                reads = values[0]
+                sample_kind = values[1]
+                sk = sample_kind.split("_")
+                if len(sk) == 3:
+                    if dictio_reads.get(sk[0]) is None:
+                        dictio_reads[sk[0]] = [0,0]
+                    if sk[1] == "human":
+                        dictio_reads[sk[0]][0] = reads 
+                    if sk[1] == "mouse":
+                        dictio_reads[sk[0]][1] = reads 
+            with open(output.percs, 'w') as out:
+                for s in dictio_reads.keys():
+                    tupl = dictio_reads[s]
+                    ratio = 0
+                    if float(tupl[0]) != 0:
+                        ratio = float(tupl[1]) / float(tupl[0])
+                    out.write('{}\t{}\n'.format(s, ratio))
+    
 
 rule add_chr_to_vcf_porc:
     input: DATA_DIR+"/All_20180418.vcf.gz"
