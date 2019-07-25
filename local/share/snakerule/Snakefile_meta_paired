@@ -1,0 +1,21 @@
+include: "./conf.sk"
+#REF=SAMPLESD[0]
+#SAMPLESD=SAMPLES[1:len(SAMPLES)]
+# in ../../../../local/share/snakerule/Snakefile_mutect2_paired_poles
+# should be adapted
+
+rule all_paired:
+	input: expand("./mutect_paired_{num}/Snakefile", num=range(1,len(SAMPLES))) 
+
+rule one_paired:
+	input: PRJ_ROOT+"/local/share/snakerule/Snakefile_mutect2_paired_poles"
+	output: PRJ_ROOT+"/local/share/snakerule/Snakefile_mutect2_paired_poles_{num}"
+	shell:
+		"""
+			mkdir -p mutect_paired_{wildcards.num}
+			sed 's/REF=SAMPLESD\[0\]/REF=SAMPLESD[{wildcards.num}]/1; s/SAMPLESD=SAMPLES\[1:len(SAMPLES)\]/del SAMPLESD[{wildcards.num}]/1;' < {input} > {output}
+			cd mutect_paired_{wildcards.num} && ln -s ../../../../local/share/snakerule/Snakefile_mutect2_paired_poles_{wildcards.num} Snakefile
+		"""
+
+# possibly call snakemake?
+

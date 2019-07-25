@@ -43,7 +43,8 @@ CALLABLE_STRICT="50:100,100:150,150:inf"
 PADDING=100
 MINDP=10
 
-GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
+#GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
+GNOMAD=PRJ_ROOT+"/local/share/data"
 VEP_CACHE_DIR=ROOT+"/common/task/variant_annotations/dataset/VEP"
 REFFLAT="../../refFlat.txt"
 REFFLATGZ=ROOT+"/common/task/annotations/dataset/ucsc/hg38/refFlat.txt.gz"
