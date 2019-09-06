@@ -4,18 +4,23 @@ include: "./conf.sk"
 # in ../../../../local/share/snakerule/Snakefile_mutect2_paired_poles
 # should be adapted
 
+
+# Caution: mutect2 puts samples in alphabetical order in its vcf and the logic in /local/share/snakerule/Snakefile_mutect2_paired_poles is based
+# on this assumption and on the fact that our SAMPLESD is also alphabetical, the "check" rule should help in determining if everything is ok
+# TODO check the adaptation to "generic" REF done in the perl used for the aftable, it's completely untested
 rule all_paired:
-	input: expand("./mutect_paired_{num}/Snakefile", num=range(1,len(SAMPLES))) 
+	input: expand("mutect_paired_{num}/Snakefile", num=range(0,len(SAMPLES))) 
 
 rule one_paired:
 	input: PRJ_ROOT+"/local/share/snakerule/Snakefile_mutect2_paired_poles"
-	output: PRJ_ROOT+"/local/share/snakerule/Snakefile_mutect2_paired_poles_{num}"
+	output: "mutect_paired_{num}/Snakefile"
 	shell:
 		"""
 			mkdir -p mutect_paired_{wildcards.num}
-			sed 's/REF=SAMPLESD\[0\]/REF=SAMPLESD[{wildcards.num}]/1; s/SAMPLESD=SAMPLES\[1:len(SAMPLES)\]/del SAMPLESD[{wildcards.num}]/1;' < {input} > {output}
-			cd mutect_paired_{wildcards.num} && ln -s ../../../../local/share/snakerule/Snakefile_mutect2_paired_poles_{wildcards.num} Snakefile
+            echo NREF={wildcards.num} > {output}
+			sed 's/REF=SAMPLESD\[0\]/REF=SAMPLESD[{wildcards.num}]/1; s/SAMPLESD=SAMPLES\[1:len(SAMPLES)\]/del SAMPLESD[{wildcards.num}]/1;' < {input} >> {output}
 		"""
 
 # possibly call snakemake?
-
+rule a:
+    shell:   "echo ciao"

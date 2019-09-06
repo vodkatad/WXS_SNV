@@ -69,7 +69,7 @@
     "mutectall":
     {
         "time": "140:00:00",
-        "mem": "2500",
+        "mem": "3500",
         "ntasks": "1"
     },
     "getpileup":
