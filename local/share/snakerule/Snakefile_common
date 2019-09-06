@@ -1,5 +1,34 @@
 include: "conf.sk"
 
+def find_ln(wildcards):
+    import os
+    i = SAMPLES.index(wildcards.sample)
+    w = DATA+"/"+SAMPLES_ORIG[i]+"_"+wildcards.rep+".fastq.gz"
+    print(w)
+    if os.path.isfile(w):
+        return w
+    else:
+        raise ValueError("Check you SAMPLES_ORIG and SAMPLES in conf.sk!")
+            
+rule ln:
+    input: find_ln
+    output: "{sample}_{rep}.fastq.gz"
+    shell:
+        """
+            ln -s {input} {output}
+        """
+
+rule all_fastqc:
+    input: expand("fastqc_{sample}", sample=SAMPLES)
+
+rule fastqc:
+    input: expand("{{sample}}_{pair}.fastq.gz", pair=PAIRS)
+    output: "fastqc_{sample}"
+    shell: "mkdir -p {output}; fastqc --extract -t " + str(CORES) + " -o {output} {input}; rm {output}/{wildcards.sample}_fastqc.zip"
+
+
+### misc
+
 rule add_chr_to_vcf_porc:
     input: DATA_DIR+"/All_20180418.vcf.gz"
     output: "dbsnp.all.vcf.gz"
@@ -11,8 +40,16 @@ rule add_chr_to_vcf_porc:
 
 rule sort_targeted_porc:
     input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
-    output: SEXONS
+    output: LSEXONS
     shell:
         """
             bedtools sort -faidx {input.fai} -i {input.bed} > {output}
+        """
+
+rule refflat:
+    input: REFFLATGZ
+    output: "refFlat.txt"
+    shell:
+        """
+           gunzip -c {input} > {output}
         """
