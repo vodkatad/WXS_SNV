@@ -9,6 +9,8 @@ DEBUG="yes"
 #DATA=DATA_DIR+'/spatial'
 DATA=PRJ_ROOT+"/local/share/data/MA_qc_biodiversa"
 FQ_DIR=PRJ_ROOT+'/dataset/MA_qc_biodiversa'
+FQ_XENOME_DIR=FQ_DIR+"/xenome"
+FQ_TRIM_DIR=FQ_DIR+"/trim"
 # EMPTY for WGS
 EXONS=""
 LSEXONS=""
@@ -16,12 +18,15 @@ LSEXONS=""
 #SAMPLES=["CRC0542LMX0B01001TUMD11000","CRC0542LMX0B02001TUMD02000","CRC0542LMX0B02003TUMD02000","CRC0542LMX0B03020TUMD05000","CRC0542LMX0B04006TUMD02000"]
 SAMPLES_ORIG=["1740D-84-01_S48_L004","1740D-84-02_S52_L005"]
 SAMPLES=["CRC1307NLH","CRC1307LMO"]
+#XENOMED_SAMPLES=["CRC1307NLH"] # just an example
+XENOMED_SAMPLES=""
 # normal liver, organoide bulk basale
 FASTQ_SUFFIX="_{pair}.fastq.gz"
-FASTQ_SUFFIX_XENOME=""
+FASTQ_SUFFIX_XENOME="_human_{pair}.fastq"
+#XENOME_FQ_DIR=""
 
 PAIRS=['R1_001','R2_001']
-PAIRS_XENOME=[]
+PAIRS_XENOME=PAIRS
 CORES=16
 MEM=4
 # TODO need to adapt to unpaired (do they exists?) reads, will need to change the all rule in the subdirs using an input function...
