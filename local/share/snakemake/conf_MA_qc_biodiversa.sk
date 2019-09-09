@@ -18,12 +18,18 @@ LSEXONS=""
 #SAMPLES=["CRC0542LMX0B01001TUMD11000","CRC0542LMX0B02001TUMD02000","CRC0542LMX0B02003TUMD02000","CRC0542LMX0B03020TUMD05000","CRC0542LMX0B04006TUMD02000"]
 SAMPLES_ORIG=["1740D-84-01_S48_L004","1740D-84-02_S52_L005"]
 SAMPLES=["CRC1307NLH","CRC1307LMO"]
+REF=SAMPLES[0]
+SAMPLESD=SAMPLES[1:len(SAMPLES)]
+SAMPS=",".join(SAMPLESD)
+
+
 #XENOMED_SAMPLES=["CRC1307NLH"] # just an example
 XENOMED_SAMPLES=""
 # normal liver, organoide bulk basale
 FASTQ_SUFFIX="_{pair}.fastq.gz"
 FASTQ_SUFFIX_XENOME="_human_{pair}.fastq"
 #XENOME_FQ_DIR=""
+DBSNP=PRJ_ROOT+"/dataset/spatial/dbsnp.all.vcf.gz"
 
 PAIRS=['R1_001','R2_001']
 PAIRS_XENOME=PAIRS
@@ -48,7 +54,6 @@ ANNOTATIONS=ROOT+"/common/task/annotations/dataset/gdc"
 CALLABLE="5:10,10:50,50:100,100:150,150:inf"
 CALLABLE_STRICT="50:100,100:150,150:inf"
 
-PADDING=100
 MINDP=10
 
 #GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
@@ -60,3 +65,12 @@ REFFLATGZ=ROOT+"/common/task/annotations/dataset/ucsc/hg38/refFlat.txt.gz"
 # Singularity containers
 GATK_SING=ROOT+"/gatk4100/gatk.img"
 
+rule all_something:
+    input: expand("{sample}-"+REF+".{{something}}", sample=SAMPLESD)
+    output: "all_samples_{something}"
+    shell: "touch {output}"
+
+rule all_single_something:
+    input: expand("{sample}.{{something}}", sample=SAMPLES)
+    output: "all_samples_{something}"
+    shell: "touch {output}"

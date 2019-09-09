@@ -20,31 +20,31 @@
     },
     "bwa_mem":
     {
-        "time": "40:00:00",
+        "time": "10:00:00",
         "mem": "9600",
         "ntasks": "16"
     },
    "mark_duplicates_picard":
     {
-        "time": "01:30:00",
+        "time": "06:00:00",
         "mem": "11000",
         "ntasks": "12"
     },
     "recalibrate_quality": 
     {
-        "time": "03:00:00",
+        "time": "09:00:00",
         "mem": "1500",
         "ntasks": "1"
     },
     "recalibrate_plot": 
     {
-        "time": "02:30:00",
+        "time": "06:00:00",
         "mem": "1500",
         "ntasks": "1"
     },
     "sorted_bai": 
     {
-        "time": "06:00:00",
+        "time": "12:00:00",
         "mem": "10000",
         "ntasks": "8"
     },
@@ -62,13 +62,13 @@
     },
     "mutect":
     {
-        "time": "08:00:00",
+        "time": "24:00:00",
         "mem": "3500",
         "ntasks": "1"
     },
     "mutectpaired":
     {
-        "time": "12:00:00",
+        "time": "36:00:00",
         "mem": "2500",
         "ntasks": "1"
     },
@@ -80,55 +80,55 @@
     },
     "getpileup":
     {
-        "time": "02:30:00",
+        "time": "06:00:00",
         "mem": "2000",
         "ntasks": "1"
     },
     "calculatecontamination":
     {
-        "time": "01:00:00",
+        "time": "03:00:00",
         "mem": "800",
         "ntasks": "1"
     },
     "filtercalls":
     {
-        "time": "01:00:00",
+        "time": "03:00:00",
         "mem": "1500",
         "ntasks": "1"
     },
     "artifacts":
     {
-        "time": "01:30:00",
+        "time": "06:00:00",
         "mem": "3500",
         "ntasks": "1"
     },
     "filterOrientation":
     {
-        "time": "01:00:00",
+        "time": "03:00:00",
         "mem": "400",
         "ntasks": "1"
     },
     "VEP":
     {
-        "time": "01:00:00",
+        "time": "03:00:00",
         "mem": "2000",
         "ntasks": "1"
     },
     "xenome":
     {
-        "time": "04:00:00",
+        "time": "12:00:00",
         "mem": "18000",
         "ntasks": "8"
     },
     "repeated_muts":
     {
-        "time": "06:00:00",
+        "time": "18:00:00",
         "mem": "1000",
         "ntasks": "1"
     },
     "repeated_muts_thr":
     {
-        "time": "08:00:00",
+        "time": "24:00:00",
         "mem": "1000",
         "ntasks": "1"
     }

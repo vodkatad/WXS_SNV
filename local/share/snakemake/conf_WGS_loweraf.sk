@@ -1,0 +1,10 @@
+## For example, the gnomAD resource af-only-gnomad_grch38.vcf.gz represents ~200k exomes and ~16k genomes and the tutorial data is exome data, so we adjust --af-of-alleles-not-in-resource to 0.0000025 which corresponds to 1/(2*exome samples).
+#gnomad_af=GNOMAD+"/gnomad.forcontamination.exomes.vcf"
+##../align_calibrate/dbsnp.all.vcf.gz
+#gnomad=GNOMAD+"/chr_gnomad.exomes.vcf.bgz"
+## loweraf = 0 without normal to avoid too strict filters on germlinea
+#https://gatkforums.broadinstitute.org/gatk/discussion/10157/gatk4-beta-no-filter-passing-variants-in-mutect2-tumor-only-runs-using-default-parameters
+## TODO bed should be intersection of callable ref and delta
+#https://github.com/broadinstitute/gatk/issues/4366
+LOWERAF="0" # or 0.0000025, 0 on old GATK version yielded results more similar to idea
+# 0 should be better to avoid filtering real somatic, the germline here should not be a big issue since we are doing subtractions
