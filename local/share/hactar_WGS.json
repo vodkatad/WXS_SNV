@@ -27,18 +27,18 @@
    "mark_duplicates_picard":
     {
         "time": "06:00:00",
-        "mem": "11000",
+        "mem": "10000",
         "ntasks": "12"
     },
     "recalibrate_quality": 
     {
-        "time": "09:00:00",
-        "mem": "1500",
+        "time": "240:00:00",
+        "mem": "20000",
         "ntasks": "1"
     },
     "recalibrate_plot": 
     {
-        "time": "06:00:00",
+        "time": "30:00:00",
         "mem": "1500",
         "ntasks": "1"
     },
@@ -62,14 +62,14 @@
     },
     "mutect":
     {
-        "time": "24:00:00",
-        "mem": "3500",
+        "time": "240:00:00",
+        "mem": "20000",
         "ntasks": "1"
     },
     "mutectpaired":
     {
-        "time": "36:00:00",
-        "mem": "2500",
+        "time": "240:00:00",
+        "mem": "20000",
         "ntasks": "1"
     },
     "mutectall":
@@ -131,5 +131,11 @@
         "time": "24:00:00",
         "mem": "1000",
         "ntasks": "1"
+    },
+    "batch":
+    {
+        "time": "240:00:00",
+        "mem": "10000",
+        "ntasks": "16"
     }
 }   

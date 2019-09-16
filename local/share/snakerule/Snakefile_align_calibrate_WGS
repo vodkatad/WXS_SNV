@@ -144,6 +144,8 @@ rule recalibrate_quality:
             gatk ApplyBQSR -R {input.reference} -I {input.bam} --bqsr-recal-file  {output.table} -O {output.bam} --create-output-bam-index true 2> {output.bam}.slog
         """
 
+### TODO convert to cram 
+
 #ruleorder: recalibrate_quality > mark_duplicates_picard > bwa_mem
 
 #[align_calibrate]egrassi@compute-1-4$ time  snakemake --use-singularity --singularity-args "-B /home/egrassi/strata:/home/egrassi/strata" realigned_CRC0542LMX0B03020TUMD05000.bam 
