@@ -1,15 +1,23 @@
 include: "../conf.sk"
+include: "./conf.sk"
+
+def is_wgs(wildcards):
+    if WGS == "yes":
+        return "-m wgs -p " + str(CORES)
+    return "--targets {params.bed}"
 
 # not using an subworkflow here to reduce dependencies nightmares, this will be run after mutect2
 rule batch:
-    input: bamdelta=expand("../align_calibrate/realigned_{sample}.sorted.bam", sample=SAMPLESD), bed=SEXONS, reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
+    input: bamdelta=expand("../align_calibrate/realigned_{sample}.sorted.bam", sample=SAMPLESD), reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
     output: o1="cnv/reference.cnn", o2="cnv.plh"
     log: "cnv.log"
-    singularity: ROOT+"/cnvkit/cnvkit.img"
+    singularity: HROOT+"/cnvkit/cnvkit.img"
+    params: wgs=is_wgs, bed = SEXONS
     shell: 
         """
             cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
-            --targets {input.bed} --annotate {input.refFlat} \
+            {params.is_wgs} \
+            --annotate {input.refFlat} \
             --fasta {input.reference} \
             --output-dir cnv/ \
             --diagram --scatter \
@@ -46,7 +54,7 @@ def findCnr(wildcards):
 rule heatmap:
     input: cns=findCns, plh="{directory}.plh"
     output: "{directory}.heatmap.pdf"
-    singularity: ROOT+"/cnvkit/cnvkit.img"
+    singularity: HROOT+"/cnvkit/cnvkit.img"
     shell:
         """
             cnvkit.py heatmap {input.cns} -d -o {output}
@@ -66,7 +74,7 @@ rule metrics:
 # updated snakemake, was fixed in 2018
 rule try:   
     output: "help"
-    singularity: ROOT+"/cnvkit/cnvkit.img"
+    singularity: HROOT+"/cnvkit/cnvkit.img"
     shell:
         """
             cnvkit.py batch -h 2> {output}
@@ -76,11 +84,13 @@ rule batchone:
     input: bamdelta="../align_calibrate/realigned_{sample}.sorted.bam", bed=SEXONS, reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
     output: o1="{sample}/reference.cnn", o2="{sample}.plh"
     log: "{sample}.log"
-    singularity: ROOT+"/cnvkit/cnvkit.img"
+    singularity: HROOT+"/cnvkit/cnvkit.img"
+    params: wgs=is_wgs, bed = SEXONS
     shell: 
         """
             cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
-            --targets {input.bed} --annotate {input.refFlat} \
+            {params.is_wgs} \
+            --annotate {input.refFlat} \
             --fasta {input.reference} \
             --output-dir {wildcards.sample}/ \
             --diagram --scatter \
