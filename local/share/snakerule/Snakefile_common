@@ -1,5 +1,8 @@
 include: "conf.sk"
 
+rule all_ln:
+    input: expand("{sample}_{pair}.fastq.gz", pair=PAIRS, sample=SAMPLES)
+
 def find_ln(wildcards):
     import os
     i = SAMPLES.index(wildcards.sample)
@@ -23,7 +26,7 @@ rule all_fastqc:
 
 rule fastqc:
     input: expand("{{sample}}_{pair}.fastq.gz", pair=PAIRS)
-    output: "fastqc_{sample}"
+    output: directory("fastqc_{sample}")
     shell: "mkdir -p {output}; fastqc --extract -t " + str(CORES) + " -o {output} {input}; rm {output}/*_fastqc.zip"
 
 
@@ -61,7 +64,7 @@ def produce_pairs(wildcards):
 # TODO compress xenome fq to avoid dying with too much used space?
 rule xenome:
     input: unpack(produce_pairs)
-    #output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
+    output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
     params: cores=8, mem=20, xenome="/home/egrassi/common/task/sequences/dataset/gdc/xenomidx"
     log: "{sample}.xenome"
     singularity: ROOT+"/gossamer/gossamer.img"
@@ -73,7 +76,7 @@ rule xenome:
 
 rule checkxenome:
     input: unpack(produce_pairs)
-    output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
+    #output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
     shell:
        """
         tot1=$(zcat {input.fastq2} {input.fastq1} | wc -l)
