@@ -35,8 +35,8 @@ def produce_pairs(wildcards):
 # REFACTOR: could be adapted to unpaired removing named input, using input[0] for the headers def.
 rule bwa_mem:
     input: unpack(produce_pairs)
-    output: temp("{sample}.bam")
-    params: cores=CORES, ref=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    output: temp(ALIGN_DIR+"/{sample}.bam")
+    params: cores=CORES, ref=DATA_DIR+"/GRCh38.d1.vd1.fa", dir=ALIGN_DIR
     shell: 
         """
         if echo {input.fastq1} | grep -q .gz; then
@@ -47,6 +47,7 @@ rule bwa_mem:
         id=$(echo $header | cut -f 1-4 -d":" | sed 's/^@//' | sed 's/:/_/g')
         smnh=$(echo $header | grep -Eo "[ATGCN\+]+$")
         sm={wildcards.sample}
+        mkdir -p {params.dir}
         bwa mem -R "@RG\\tID:$id\\tSM:$sm\\tLB:$sm"_"$id"_"$smnh\\tPL:ILLUMINA" -t {params.cores} -K 100000000 -Y {params.ref} {input.fastq1} {input.fastq2} | samtools view -Shb -o {output} 
         """
 
@@ -102,7 +103,7 @@ rule sort_picard:
 #https://gatkforums.broadinstitute.org/gatk/discussion/6747/how-to-mark-duplicates-with-markduplicates-or-markduplicateswithmatecigar#section2
 rule mark_duplicates_picard:
     input: "{sample}.bam"
-    output: bam=temp("markedDup_{sample}.bam"), metrics="{sample}.dupMetrics.txt"
+    output: bam=temp(ALIGN_DIR+"/markedDup_{sample}.bam"), metrics=ALIGN_DIR+"/{sample}.dupMetrics.txt"
     params: pixel_dist=PATTERNED
     shell: 
         """
@@ -135,9 +136,9 @@ rule mark_duplicates_picard:
 # --spark-master local[2] to use BaseRecalibratorSpark with 2 threads but it's still beta
 # Do we want to use Cosmic here together with dbsnp?
 rule recalibrate_quality:
-    input: bam="markedDup_{sample}.sorted.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", snps=DBSNP, bai="markedDup_{sample}.sorted.bam.bai"
+    input: bam=ALIGN_DIR+"/markedDup_{sample}.sorted.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", snps=DBSNP, bai=ALIGN_DIR+"/markedDup_{sample}.sorted.bam.bai"
     singularity: GATK_SING
-    output: bam=protected("realigned_{sample}.bam"), table="{sample}.table"
+    output: bam=protected(ALIGN_DIR+"/realigned_{sample}.bam"), table=ALIGN_DIR+"/{sample}.table"
     shell:
         """
             gatk BaseRecalibrator -R {input.reference} -I {input.bam} --known-sites {input.snps} -O {output.table} 2> {output.table}.slog
@@ -157,8 +158,8 @@ rule recalibrate_quality:
 #[align_calibrate]egrassi@hactarlogin$ snakemake -j 1 CRC0542LMX0B03020TUMD05000.placeholder --cluster-config ../../../local/share/hactar.json --cluster "sbatch --mail-user={cluster.mail-user} --mail-type={cluster.mail-type} --partition={cluster.partition} --nodes={cluster.nodes} --job-name={cluster.job-name} --output={cluster.output} --error={cluster.error} --time=48:00:00 --mem=8000 --ntasks=4" --use-singularity --singularity-args "-B /home/egrassi/strata:/home/egrassi/strata"
 
 rule recalibrate_plot:
-    input: reference=DATA_DIR+"/GRCh38.d1.vd1.fa", table="{sample}.table", bam="realigned_{sample}.bam", snps=DBSNP
-    output: "{sample}.recal_plots.pdf"
+    input: reference=DATA_DIR+"/GRCh38.d1.vd1.fa", table=ALIGN_DIR+"/{sample}.table", bam=ALIGN_DIR+"/realigned_{sample}.bam", snps=DBSNP
+    output: ALIGN_DIR+"/{sample}.recal_plots.pdf"
     singularity: GATK_SING
     shell: 
         """

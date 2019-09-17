@@ -6,13 +6,12 @@ DATA_DIR=PRJ_ROOT+'/local/share/data'
 DEBUG="yes"
 
 ## This dataset:
-#DATA=DATA_DIR+'/spatial'
 DATA=PRJ_ROOT+"/local/share/data/targeted_hr"
 FQ_DIR=PRJ_ROOT+"/dataset/targeted_hr"
 FQ_XENOME_DIR=FQ_DIR+"/xenome"
-EXONS=DATA+'/PJ1812427_covered.bed'
-SEXONS='../../PJ1812427_sorted.bed'
-LSEXONS='PJ1812427_sorted.bed' #TODOFIXME os.base
+EXONS=DATA+'/targeted.bed'
+SEXONS=FQ_DIR+'/targeted_sorted.bed'
+LSEXONS='targeted_sorted.bed'
 
 # sed 1d PJ1903090-SF-Integragen-Targeted-Seq.tsv  | cut -f 1 | tr "_" "\t" | cut -f 1 | tr "\n" "," | sed 's/,/","/g'
 SAMPLES_ORIG=["1174064085","1174064077","1174064069","1174064061","1174064053","1174064045","1174064037","1174064029","1174064021","1174064084","1174064076","1174064068","1174064060","1174064052","1174064044","1174064036","1174064028","1174064020","1174064083","1174064075","1174064067","1174064059","1174064051","1174064043","1174064035","1174064027","1174064019","1174064082","1174064074","1174064066","1174064058","1174064050","1174064042","1174064034","1174064026","1174064018","1174064081","1174064073","1174064065","1174064057","1174064049","1174064041","1174064033","1174064025","1174064017","1174064080","1174064072","1174064064","1174064056","1174064048","1174064040","1174064032","1174064024","1174064016","1174064079","1174064071","1174064063","1174064055","1174064047","1174064039","1174064031","1174064023","1174064078","1174064070","1174064062","1174064054","1174064046","1174064038","1174064030","1174064022"]
@@ -21,7 +20,7 @@ REF=""
 SAMPLESD=[]
 SAMPS=",".join(SAMPLESD)
 XENOMED_SAMPLES=SAMPLES
-
+TRIMMED_SAMPLES=[]
 
 FASTQ_SUFFIX="_{pair}.fastq.gz"
 FASTQ_SUFFIX_XENOME="_human_{pair}.fastq"
@@ -74,3 +73,11 @@ rule all_single_something:
     input: expand("{sample}.{{something}}", sample=SAMPLES)
     output: "all_samples_{something}"
     shell: "touch {output}"
+
+
+# Other phases Snakefiles are included here without symbolic links: in this way the right ones need to be
+# plugged in the base conf.sk
+ALIGN_DIR="align"
+include: PRJ_ROOT+"/local/share/snakerule/Snakefile_align_calibrate_WES_basedir"
+
+# then mutect

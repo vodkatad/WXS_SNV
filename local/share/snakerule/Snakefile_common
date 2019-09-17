@@ -42,8 +42,8 @@ rule multiqc:
 
 ### xenome (optional)
 rule all_xenome:
-    input: expand(FQ_XENOME_DIR+"/{sample}.xenome.placeholder", sample=XENOMED_SAMPLES)
-    output: "{sample}.xen"
+    input: expand("xenome/{sample}.xenome.placeholder", sample=XENOMED_SAMPLES)
+    output: "xenome/done"
     shell:
         """
             touch {output}
@@ -64,19 +64,20 @@ def produce_pairs(wildcards):
 # TODO compress xenome fq to avoid dying with too much used space?
 rule xenome:
     input: unpack(produce_pairs)
-    output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
+    #output: "xenome/{sample}.xenome.placeholder"
     params: cores=8, mem=20, xenome="/home/egrassi/common/task/sequences/dataset/gdc/xenomidx"
     log: "{sample}.xenome"
     singularity: ROOT+"/gossamer/gossamer.img"
     shell: 
         """
+            mkdir -p xenome
             xenome classify -v -T {params.cores} -M {params.mem} -P {params.xenome} --graft-name human --host-name mouse -l {log}\\
-            --pairs --output-filename-prefix {wildcards.sample} -i {input.fastq1} -i {input.fastq2}
+            --pairs --output-filename-prefix xenome/{wildcards.sample} -i {input.fastq1} -i {input.fastq2}
         """
 
 rule checkxenome:
     input: unpack(produce_pairs)
-    #output: FQ_XENOME_DIR+"/{sample}.xenome.placeholder"
+    output: "xenome/{sample}.xenome.placeholder"
     shell:
        """
         tot1=$(zcat {input.fastq2} {input.fastq1} | wc -l)
@@ -98,20 +99,20 @@ rule checkxenome:
 #echo "touch -d ${{times[$i]}} ${{fq[$i]}}"
 def find_xenome(wildcards):
     import glob
-    return glob.glob(FQ_XENOME_DIR+"/"+wildcards.sample+"*.fastq")
+    return glob.glob("xenome/"+wildcards.sample+"*.fastq")
 
 
 rule xenomeinfo:
     input: find_xenome
-    output: FQ_XENOME_DIR+"{sample}.xenomeinfo"
+    output: "xenome/{sample}.xenomeinfo"
     shell: 
         """
             wc -l {input} > {output}
         """
 
 rule murine_content:
-    input: info=FQ_XENOME_DIR+"{sample}.xenomeinfo"
-    output: percs=FQ_XENOME_DIR+"{sample}.murine"
+    input: info="xenome/{sample}.xenomeinfo"
+    output: percs="xenome/{sample}.murine"
     run: 
         with open(input.info, 'r') as info:
             dictio_reads = {}
@@ -162,3 +163,4 @@ rule refflat:
         """
            gunzip -c {input} > {output}
         """
+
