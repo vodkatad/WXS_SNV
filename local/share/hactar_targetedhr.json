@@ -26,19 +26,19 @@
     },
     "bwa_mem":
     {
-        "time": "07:00:00",
-        "mem": "8000",
-        "ntasks": "4"
+        "time": "00:30:00",
+        "mem": "10000",
+        "ntasks": "8"
     },
    "mark_duplicates_picard":
     {
-        "time": "01:00:00",
-        "mem": "11000",
+        "time": "00:30:00",
+        "mem": "10000",
         "ntasks": "12"
     },
     "recalibrate_quality": 
     {
-        "time": "02:00:00",
+        "time": "01:30:00",
         "mem": "1500",
         "ntasks": "1"
     },
@@ -50,8 +50,8 @@
     },
     "sorted_bai": 
     {
-        "time": "03:00:00",
-        "mem": "10000",
+        "time": "00:20:00",
+        "mem": "5000",
         "ntasks": "8"
     },
     "all_coverage":
@@ -130,6 +130,12 @@
     {
         "time": "3:00:00",
         "mem": "1000",
+        "ntasks": "1"
+    },
+    "add_chr_to_vcf":
+    {
+        "time": "10:00:00",
+        "mem": "800",
         "ntasks": "1"
     }
 }   

@@ -1,8 +1,21 @@
 ROOT='/home/egrassi'
-PRJ_ROOT='/home/egrassi/WXS_SNV'
+import os
+def find_prj_root(path=os.getcwd()):
+    if os.path.isfile(os.path.join(path,".PRJ_ROOT")):
+        return path
+    else:
+        if path:
+            return find_prj_root(os.path.dirname(path))
+        else:
+            raise Exception("Can not find the PRJ_ROOT directory")
+
+
+PRJ_ROOT=find_prj_root()
+
 SRC_DIR=PRJ_ROOT+'/local/src'
 BIN_DIR=PRJ_ROOT+'/local/bin'
 DATA_DIR=PRJ_ROOT+'/local/share/data'
+REF_DIR='/home/egrassi/strata/local/share/data'
 DEBUG="yes"
 
 ## This dataset:
@@ -50,8 +63,7 @@ CALLABLE_STRICT="50:100,100:150,150:inf"
 PADDING=100
 MINDP=10
 
-#GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
-GNOMAD=PRJ_ROOT+"/local/share/data"
+GNOMAD=ROOT+"/common/task/annotations/dataset/gnomad"
 VEP_CACHE_DIR=ROOT+"/common/task/variant_annotations/dataset/VEP"
 REFFLAT="../../refFlat.txt"
 REFFLATGZ=ROOT+"/common/task/annotations/dataset/ucsc/hg38/refFlat.txt.gz"
@@ -70,9 +82,9 @@ rule all_something:
     shell: "touch {output}"
 
 rule all_single_something:
-    input: expand("{sample}.{{something}}", sample=SAMPLES)
-    output: "all_samples_{something}"
-    shell: "touch {output}"
+    input: expand("{{dir}}/{sample}.{{something}}", sample=SAMPLES)
+    output: "{dir}/all_samples_{something}"
+    shell: "mkdir -p {wildcards.dir}; touch {output}"
 
 
 # Other phases Snakefiles are included here without symbolic links: in this way the right ones need to be
@@ -81,3 +93,5 @@ ALIGN_DIR="align"
 include: PRJ_ROOT+"/local/share/snakerule/Snakefile_align_calibrate_WES_basedir"
 
 # then mutect
+MUTECT_DIR="mutect"
+include: PRJ_ROOT+"/local/share/snakerule/Snakefile_mutect2_WES_basedir"

@@ -81,7 +81,7 @@ rule checkxenome:
     shell:
        """
         tot1=$(zcat {input.fastq2} {input.fastq1} | wc -l)
-        tot2=$(cat {wildcards.sample}_*.fastq | wc -l)
+        tot2=$(cat xenome/{wildcards.sample}_*.fastq | wc -l)
         if [ $tot1 = $tot2 ]; then
             echo -e "ok\t$tot1\t$tot2" > {output}
         else
@@ -139,7 +139,7 @@ rule murine_content:
     
 ### misc
 
-rule add_chr_to_vcf_porc:
+rule add_chr_to_vcf:
     input: DATA_DIR+"/All_20180418.vcf.gz"
     output: "dbsnp.all.vcf.gz"
     shell:
@@ -148,7 +148,7 @@ rule add_chr_to_vcf_porc:
         tabix -p vcf {output}
         """
 
-rule sort_targeted_porc:
+rule sort_targeted:
     input: bed=EXONS, fai=DATA_DIR+"/GRCh38.d1.vd1.fa.fai" 
     output: LSEXONS
     shell:
