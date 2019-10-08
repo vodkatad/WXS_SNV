@@ -5,11 +5,12 @@ SRC_DIR=PRJ_ROOT+'/local/src'
 BIN_DIR=PRJ_ROOT+'/local/bin'
 DATA_DIR=PRJ_ROOT+'/local/share/data'
 DEBUG="yes"
-NAME="biodiversa"
+
+NAME="integragen"
 ## This dataset:
 #DATA=DATA_DIR+'/spatial'
-DATA=PRJ_ROOT+"/local/share/data/MA_qc_biodiversa"
-FQ_DIR=PRJ_ROOT+'/dataset/MA_qc_biodiversa'
+DATA=PRJ_ROOT+"/local/share/data/MA_qc_integragen"
+FQ_DIR=PRJ_ROOT+'/dataset/MA_qc_integragen'
 FQ_XENOME_DIR=FQ_DIR+"/xenome"
 FQ_TRIM_DIR=FQ_DIR+"/trim"
 # EMPTY for WGS
@@ -18,7 +19,7 @@ LSEXONS=""
 SEXONS=""
 #[data]egrassi@hactarlogin$ ls *1.fastq.gz | perl -ane '/(CRC[0-9A-Z]+)/; print "\"$1\"",';
 #SAMPLES=["CRC0542LMX0B01001TUMD11000","CRC0542LMX0B02001TUMD02000","CRC0542LMX0B02003TUMD02000","CRC0542LMX0B03020TUMD05000","CRC0542LMX0B04006TUMD02000"]
-SAMPLES_ORIG=["1740D-84-01_S48_L004","1740D-84-02_S52_L005"]
+SAMPLES_ORIG=["CRC1307NLH","CRC1307LMO"]
 SAMPLES=["CRC1307NLH","CRC1307LMO"]
 REF=SAMPLES[0]
 SAMPLESD=SAMPLES[1:len(SAMPLES)]
@@ -33,7 +34,7 @@ FASTQ_SUFFIX_XENOME="_human_{pair}.fastq"
 #XENOME_FQ_DIR=""
 DBSNP=PRJ_ROOT+"/dataset/spatial/dbsnp.all.vcf.gz"
 
-PAIRS=['R1_001','R2_001']
+PAIRS=['R1','R2']
 PAIRS_XENOME=PAIRS
 CORES=16
 MEM=4
@@ -67,8 +68,6 @@ REFFLATGZ=HROOT+"/common/task/annotations/dataset/ucsc/hg38/refFlat.txt.gz"
 # Singularity containers
 GATK_SING=ROOT+"/gatk4100/gatk.img"
 
-REMOVED=True
-
 rule all_something:
     input: expand("{sample}-"+REF+".{{something}}", sample=SAMPLESD)
     output: "all_samples_{something}"
@@ -78,3 +77,6 @@ rule all_single_something:
     input: expand("{sample}.{{something}}", sample=SAMPLES)
     output: "all_samples_{something}"
     shell: "touch {output}"
+
+
+REMOVED="no"

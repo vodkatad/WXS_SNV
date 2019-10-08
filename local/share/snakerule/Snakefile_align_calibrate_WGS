@@ -13,7 +13,10 @@ def produce_pairs(wildcards):
         else:
             # we depend on normal fastqs (normal samples, organoids)
             fastqs = expand(FQ_DIR+'/'+wildcards.sample+FASTQ_SUFFIX, pair=PAIRS)
-        return { 'fastq1': preprocess(fastqs[0]), 'fastq2': preprocess(fastqs[1]) }
+        if not REMOVED:
+            return { 'fastq1': preprocess(fastqs[0]), 'fastq2': preprocess(fastqs[1]) }
+        else:
+            return { 'fastq1': fastqs[0], 'fastq2': fastqs[1] }
 
 # But GATK:
 # "PreProcessingForVariantDiscovery_GATK4.bwa_commandline": "bwa mem -K 100000000 -p -v 3 -t 16 -Y $bash_ref_fasta",
@@ -238,68 +241,18 @@ rule all_coverage:
             mosdepth -t {params.thread} -n --quantize 0:1:5:10:50:100:150: {params.prefix} {input.bam}
         """
 
-#rule split_coverage:
-#    input: exons=SEXONS, depth="depth/{sample}.quantized.bed.gz"
-#    output: exons="depth/{sample}.exons.bed.gz", outof="depth/{sample}.outof.bed.gz"
-#    shell:
-#        """
-#            bedtools intersect -u -a {input.depth} -b {input.exons} | gzip > {output.exons}
-#            bedtools subtract -sorted -a {input.depth} -b {input.exons} | gzip > {output.outof}
-#        """
 
-#rule coverage_plot:
-#    input: bed="depth/{sample}.{kind}.bed.gz"
-#    output: pdf="depth/{sample}.{kind}.pdf"
-#    params: debug=DEBUG
-#    script: SRC_DIR+"/coverage_plot.R"
-#
-#
-#rule coverage_plot_bis:
-#    input: bam="realigned_{sample}.sorted.bam", bai="realigned_{sample}.sorted.bam.bai", bed=SEXONS
-#    output: temp("depth/{sample}.mosdepth.region.dist.txt")
-#    params: thread=12, prefix="depth/{sample}"
-#    shell:
-#        """ 
-#            mkdir -p depth
-#            mosdepth -n -t {params.thread} --by {input.bed} {params.prefix} {input.bam}
-#        """
-#
-##rm blah depth/CRC1979XBSX.regions.bed.gz is 2Mb
-
-rule coverage_plot_all:
-    input: expand("depth/{sample}.mosdepth.region.dist.txt", sample=SAMPLES)
-    output: "depth/exons_covplot.html"
-    params: tool=SRC_DIR+"/plot_dist.py"
+# thresholds gotten from Mutect2 default parameters that we are adopting
+rule wgs_metrics:
+    input: bam="realigned_{sample}.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa"
+    output: txt="{sample}.wgsmetrics", sens="{sample}.sens"
     shell:
         """
-            python {params.tool} {input}
-            mv dist.html {output}
+            picard CollectWgsMetrics I={input.bam} O={output.txt} R={input.reference} INCLUDE_BQ_HISTOGRAM=true ALLELE_FRACTION=0.5 MINIMUM_BASE_QUALITY=18 THEORETICAL_SENSITIVITY_OUTPUT={output.sens} MINIMUM_MAPPING_QUALITY=20
         """
 
+#picard CollectWgsMetrics -I {input.bam} -O {output.txt} -R {input.reference} -INCLUDE_BQ_HISTOGRAM true -ALLELE_FRACTION 0.5
 
-# This was a srun, estimated runtime top 30'
-#[align_calibrate]egrassi@hactarlogin$ seff 30595
-#Job ID: 30595
-#Cluster: hactar
-#User/Group: egrassi/egrassi
-#State: COMPLETED (exit code 0)
-#Cores: 1
-#CPU Utilized: 00:10:46
-#CPU Efficiency: 34.99% of 00:30:46 core-walltime
-#Job Wall-clock time: 00:30:46
-#Memory Utilized: 4.62 GB
-#Memory Efficiency: 31.55% of 14.65 GB
-#rule interval:
-#    input: bed=SEXONS, sd=DATA_DIR+"/GRCh38.d1.vd1.fa"
-#    output: "target.interval_list"
-#    shell:
-#        """
-#            picard BedToIntervalList \
-#              I={input.bed} \
-#              O={output} \
-#              SD={input.sd}
-#        """
-#
 ## tODO change in CollectHsMetrics -I realigned_CRC1979NORM.sorted.bam -O CRC1979NORM.hsmetrics -R /work/egrassi/WXS/local/share/data/GRCh38.d1.vd1.fa -BAIT_INTERVALS target.interval_list -TARGET_INTERVALS target.interval_list
 #rule hsmetrics:
 #    input: bam="realigned_{sample}.bam", reference=DATA_DIR+"/GRCh38.d1.vd1.fa", il="target.interval_list"

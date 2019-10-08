@@ -8,7 +8,7 @@ def find_ln(wildcards):
     i = SAMPLES.index(wildcards.sample)
     w = DATA+"/"+SAMPLES_ORIG[i]+"_"+wildcards.rep+".fastq.gz"
     print(w)
-    if os.path.isfile(w):
+    if os.path.isfile(w) or REMOVED:
         return w
     else:
         raise ValueError("Check you SAMPLES_ORIG and SAMPLES in conf.sk!")
