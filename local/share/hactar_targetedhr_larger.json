@@ -12,6 +12,12 @@
         "mem": "1000",
         "ntasks": "1"
     },
+    "coverage_plot_bis":
+    {
+        "time": "01:00:00",
+        "mem": "2000",
+        "ntasks": "1"
+    },
     "fastqc":
     {
         "time": "00:30:00",
