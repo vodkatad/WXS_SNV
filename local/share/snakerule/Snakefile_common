@@ -164,3 +164,32 @@ rule refflat:
            gunzip -c {input} > {output}
         """
 
+### sequenza
+CNV_DIR="sequenza"
+ALIGN_DIR="align_calibrate"
+rule seqz:
+    input: tumor=ALIGN_DIR+"/realigned_{sample}.bam", normal=ALIGN_DIR+"/realigned_"+REF+".bam", ref=DATA_DIR+"/GRCh38.d1.vd1.fa", gc=GCFILE
+    output: CNV_DIR+"/{sample}.seqz"
+    params: dir=CNV_DIR
+    shell:
+        """
+            mkdir -p {params.dir}
+            sequenza-utils bam2seqz --fasta {input.ref} -n {input.normal} -t {input.tumor} -gc {input.gc} | gzip > {output}
+        """
+
+#cat $(find /path/to/seqfiles -name "seqzfile*" | sort -V) \
+#| gunzip -c - | grep -v 'chromosome' | cat header_seqz.txt - | \
+#python2.7 sequenza-utils.py seqz-binning -w 100 -s - \
+#| gzip -c > $concatseqzfile
+
+##!/path/tp/Rscript
+#library("sequenza")
+
+#sname <- "mySampleName"
+#sampleDir <- "path/to/seqzfile/sample.seqz.gz"
+#outDir <- "myoutputdirectory"
+
+#extractData <- sequenza.extract(sampleDir,window = 10e5,min.reads=50,min.reads.normal=20)
+#extractData.CP <- sequenza.fit(extractData,segment.filter = 5e6)
+#sequenza.results(extractData, extractData.CP, out.dir = outDir,sample.id = sname)
+

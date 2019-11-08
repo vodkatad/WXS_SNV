@@ -1,6 +1,8 @@
 include: "../conf.sk"
 include: "./conf.sk"
 
+# but in this way SEXONS won't be a dependence...if we setup an input function that returns a dictionary _and_ use params with another one to build
+# the command this will work.
 def is_wgs(wildcards):
     if WGS == "yes":
         return "-m wgs -p " + str(CORES)
@@ -8,15 +10,15 @@ def is_wgs(wildcards):
 
 # not using an subworkflow here to reduce dependencies nightmares, this will be run after mutect2
 rule batch:
-    input: bamdelta=expand("../align_calibrate/realigned_{sample}.sorted.bam", sample=SAMPLESD), reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".sorted.bam", refFlat=REFFLAT
+    input: bamdelta=expand("../align_calibrate/realigned_{sample}.bam", sample=SAMPLESD), reference=DATA_DIR+"/GRCh38.d1.vd1.fa", bamref="../align_calibrate/realigned_"+REF+".bam", refFlat=REFFLAT
     output: o1="cnv/reference.cnn", o2="cnv.plh"
     log: "cnv.log"
     singularity: HROOT+"/cnvkit/cnvkit.img"
-    params: wgs=is_wgs, bed = SEXONS
+    params: if_wgs=is_wgs, bed = SEXONS
     shell: 
         """
             cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
-            {params.is_wgs} \
+            {params.if_wgs} \
             --annotate {input.refFlat} \
             --fasta {input.reference} \
             --output-dir cnv/ \
@@ -63,7 +65,7 @@ rule heatmap:
 rule metrics:
     input: cns=findCns, cnr=findCnr, plh="{directory}.plh"
     output: "{directory}.metrics"
-    singularity: ROOT+"/cnvkit/cnvkit.img"
+    singularity: HROOT+"/cnvkit/cnvkit.img"
     shell:
         """
             cnvkit.py metrics {input.cnr} -s {input.cns} -o {output}
