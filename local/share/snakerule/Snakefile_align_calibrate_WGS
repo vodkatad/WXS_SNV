@@ -317,7 +317,7 @@ rule multiqc_coverage:
 #        """
 
 #input: expand(ALIGN_DIR+"/realigned_{sample}.bam.flagstat", sample=SAMPLES) 
-rule multiqc_align:
+rule multiqc_align_temp:
     input: "CRC1307LMO.bam.flagstat","realigned_CRC1307LMO.bam.flagstat"    
     output: "multiqc_report.align.html"
     shell: 
