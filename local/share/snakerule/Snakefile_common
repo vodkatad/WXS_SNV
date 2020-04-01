@@ -165,7 +165,7 @@ rule refflat:
         """
 
 ### sequenza
-CNV_DIR="sequenza"
+CNV_DIR="sequenza2"
 ALIGN_DIR="align_calibrate"
 CHRS=["chr"+str(x) for x in range(1,23)]+["chrX","chrY"]
 rule allseqz: 
@@ -195,13 +195,13 @@ rule bin_seqz:
     params: bin=200
     shell:
         """
-         sequenza-utils.py seqz-binning -w {params.bin} -s {input} | gzip -c > {output}
+         sequenza-utils seqz_binning -w {params.bin} -s {input} | gzip -c > {output}
         """
 
 rule r_seqz:
     input: CNV_DIR+"/{sample}.all.bin.seqz.gz"
     output: directory(CNV_DIR+"/{sample}")
-    params: tool="sequenza", cores=12
+    params: tool=BIN_DIR+"/sequenza", cores=12
     shell:
         """
          {params.tool} {wildcards.sample} {input} {output}

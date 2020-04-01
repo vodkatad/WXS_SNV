@@ -14,11 +14,11 @@ rule batch:
     output: o1="cnv/reference.cnn", o2="cnv.plh"
     log: "cnv.log"
     singularity: HROOT+"/cnvkit/cnvkit.img"
-    params: if_wgs=is_wgs, bed = SEXONS
+    params: if_wgs=is_wgs, bed=SEXONS
     shell: 
         """
             cnvkit.py batch {input.bamdelta} --normal {input.bamref} \
-            {params.if_wgs} \
+            --targets {params.bed} \
             --annotate {input.refFlat} \
             --fasta {input.reference} \
             --output-dir cnv/ \
